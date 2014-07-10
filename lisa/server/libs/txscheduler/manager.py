@@ -26,12 +26,16 @@ class ScheduledTaskManager(object):
         self.configuration = configuration
         mongo = MongoClient(configuration['database']['server'], configuration['database']['port'])
         self.database = mongo.lisa
-        self.build_tasks()
+        self.tasks = []
+        self.init_flag = False
 
     def build_tasks(self):
         self.tasks = []
-        for cron in self.database.crons.find( { "enabled": True } ):
+        self.init_flag = True
+        
+        for cron in self.database.crons.find( { "enabled": 1 } ):
             rule = rrulestr(str(cron['rule']))
+            
             object = namedAny(cron['module'] + '.' + cron['class'])()
             func = namedAny(cron['module'] + '.' + cron['class'] + '.' + cron['method'])
             if cron['args']:
@@ -68,6 +72,8 @@ class ScheduledTaskManager(object):
     def run(self):
         '''Checks for tasks which need to be run and runs them.
         '''
+        if self.init_flag == False:
+            self.build_tasks()
         if self.configuration['debug']['debug_scheduler'] == True:
             log.msg('ScheduledTaskManager: checking for tasks to run...')
             log.msg(self.tasks)

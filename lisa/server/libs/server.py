@@ -15,6 +15,7 @@ from lisa.server.plugins.PluginManager import PluginManagerSingleton
 import gettext
 from lisa.server.ConfigManager import ConfigManagerSingleton
 from lisa.server.web.manageplugins.models import Intent, Rule
+from lisa.Neotique.NeoDialog import NeoDialog
 
 # Create a task manager to pass it to other services
 
@@ -88,6 +89,8 @@ class Lisa(LineReceiver):
                     client['type'], client['zone'] = jsonData['type'], jsonData['zone']
             if jsonData['type'] == "chat":
                 RulesEngine().Rules(jsonData=jsonData, lisaprotocol=self)
+            elif jsonData['type'] == "answer":
+                NeoDialog.process_answer(jsonData)
             elif jsonData['type'] == "command":
                 Commands(configuration, lisaprotocol=self).parse(jsonData=jsonData)
 

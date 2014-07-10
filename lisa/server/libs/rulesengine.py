@@ -30,7 +30,7 @@ class RulesEngine():
         else:
             jsonInput = self.wit.get_message(unicode(jsonData['body']))
         jsonInput['from'], jsonInput['type'], jsonInput['zone'] = jsonData['from'], jsonData['type'], jsonData['zone']
-
+        jsonInput['lisaprotocol'] = lisaprotocol
         if configuration['debug']['debug_before_before_rule']:
             log.msg(unicode(_("Before 'before' rule: %(jsonInput)s" % {'jsonInput': str(jsonInput)})))
         for rule in rulescollection.find({"enabled": True, "before": {"$ne":None}}).sort([("order", 1)]):
