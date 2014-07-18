@@ -5,43 +5,54 @@ from twisted.python.reflect import namedAny
 from twisted.python import log
 from wit import Wit
 import json
-
+from lisa.Neotique.NeoTrans import NeoTrans
+from lisa.Neotique.NeoDialog import NeoDialog
 from lisa.server.ConfigManager import ConfigManagerSingleton
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
-path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
-_ = translation = gettext.translation(domain='lisa', localedir=path, fallback=True,
-                                              languages=[configuration['lang']]).ugettext
 
-
+#-----------------------------------------------------------------------------
+# RulesEngine
+#-----------------------------------------------------------------------------
 class RulesEngine():
     def __init__(self):
-        client = MongoClient(configuration['database']['server'], configuration['database']['port'])
+        self.configuration = ConfigManagerSingleton.get().getConfiguration()
+        client = MongoClient(self.configuration['database']['server'], self.configuration['database']['port'])
         self.database = client.lisa
+        self.wit = Wit(self.configuration['wit_token'])
+        self.rulescollection = self.database.rules
+        self.intentscollection = self.database.intents
+        self.dialog = NeoDialog(self.configuration)
 
-        self.wit = Wit(configuration['wit_token'])
+        path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
+        self._ = NeoTrans(domain='lisa', localedir=path, fallback=True, languages=[self.configuration['lang']]).Trans
 
-    def Rules(self, jsonData, lisaprotocol):
-        rulescollection = self.database.rules
-        intentscollection = self.database.intents
-        if "outcome" in jsonData.keys():
+    #-----------------------------------------------------------------------------
+    def parse(self, jsonData, lisaprotocol):
+        # If input has already a decoded intent
+        if jsonData.has_key("outcome") == True:
             jsonInput = {}
             jsonInput['outcome'] = jsonData['outcome']
         else:
+            # Ask Wit for intent decoding
             jsonInput = self.wit.get_message(unicode(jsonData['body']))
+        
+        # Initialize output from input
         jsonInput['from'], jsonInput['type'], jsonInput['zone'] = jsonData['from'], jsonData['type'], jsonData['zone']
         jsonInput['lisaprotocol'] = lisaprotocol
-        if configuration['debug']['debug_before_before_rule']:
-            log.msg(unicode(_("Before 'before' rule: %(jsonInput)s" % {'jsonInput': str(jsonInput)})))
-        for rule in rulescollection.find({"enabled": True, "before": {"$ne":None}}).sort([("order", 1)]):
-            exec(rule['before'])
-        if configuration['debug']['debug_after_before_rule']:
-            log.msg(unicode(_("After 'before' rule: %(jsonInput)s" % {'jsonInput': str(jsonInput)})))
-        if configuration['debug']['debug_wit']:
-            log.msg("WIT: " + str(jsonInput['outcome']))
 
-        oIntent = intentscollection.find_one({"name": jsonInput['outcome']['intent']})
-        if oIntent and jsonInput['outcome']['confidence'] >= configuration['wit_confidence']:
+        # Before rules
+        if self.configuration['debug']['debug_before_before_rule']:
+            log.msg(self._("Before 'before' rule: %(jsonInput)s" % {'jsonInput': str(jsonInput)}))
+        for rule in self.rulescollection.find({"enabled": True, "before": {"$ne": None}}).sort([("order", 1)]):
+            exec(rule['before'])
+        if self.configuration['debug']['debug_after_before_rule']:
+            log.msg(self._("After 'before' rule: %(jsonInput)s" % {'jsonInput': str(jsonInput)}))
+        
+        # Execute intent in a plugin
+        if self.configuration['debug']['debug_wit']:
+            log.msg("WIT: " + str(jsonInput['outcome']))
+        oIntent = self.intentscollection.find_one({"name": jsonInput['outcome']['intent']})
+        if oIntent and jsonInput['outcome']['confidence'] >= self.configuration['wit_confidence']:
             instance = namedAny(str(oIntent["module"]))()
             methodToCall = getattr(instance, oIntent['function'])
             jsonOutput = methodToCall(jsonInput)
@@ -49,14 +60,17 @@ class RulesEngine():
             jsonOutput = {}
             jsonOutput['plugin'] = "None"
             jsonOutput['method'] = "None"
-            jsonOutput['body'] = _("I have not the right plugin installed to answer you correctly")
-        jsonOutput['from'] = jsonData['from']
-        if configuration['debug']['debug_before_after_rule']:
-            log.msg(unicode(_("Before 'after' rule: %(jsonOutput)s" % {'jsonOutput': str(jsonOutput)})))
-        for rule in rulescollection.find({"enabled": True, "after": {"$ne":None}}).sort([("order", 1)]):
+            jsonOutput['body'] = self._("no_plugin")
+        
+        # After rules
+        jsonOutput['from'] = jsonInput['from']
+        if self.configuration['debug']['debug_before_after_rule']:
+            log.msg(self._("Before 'after' rule: %(jsonOutput)s" % {'jsonOutput': str(jsonOutput)}))
+        for rule in self.rulescollection.find({"enabled": True, "after": {"$ne":None}}).sort([("order", 1)]):
             exec(rule['after'])
-            #todo it doesn't check if the condition of the rule after has matched to end the rules
             if rule['end']:
                 break
-        if configuration['debug']['debug_after_after_rule']:
-            log.msg(unicode(_("After 'after' rule: %(jsonOutput)s" % {'jsonOutput': str(jsonOutput)})))
+        if self.configuration['debug']['debug_after_after_rule']:
+            log.msg(self._("After 'after' rule: %(jsonOutput)s" % {'jsonOutput': str(jsonOutput)}))
+
+# --------------------- End of rulesengine.py  ---------------------

@@ -23,30 +23,9 @@ class Commands():
                                               languages=[self.configuration['lang']]).ugettext
         self.lisaprotocol = lisaprotocol
 
-    def mute(self, clientList):
+    def mute(self, zone_list):
         # ask clients to mute
-        # TODO should be fixed, it's not good json to send
-        if 'all' in clientList:
-            for client in self.lisaprotocol.factory.clients:
-                client['object'].sendLine("{'body': 'mute', 'from': 'LISA Server', 'type': 'command'}")
-        else:
-            for zone in clientList:
-                for client in self.lisaprotocol.factory.clients:
-                    if client['zone'] == zone:
-                            client['object'].sendLine("{'body': 'mute', 'from': 'LISA Server', 'type': 'command'}")
+        for client in self.lisaprotocol.factory.clients:
+            if 'all' in zone_list or client['zone'] in zone_list:
+                client['connection'].sendLine("{'type': 'command', 'command': 'mute', 'from': 'LISA Server'}")
 
-    def parse(self, jsonData):
-        if jsonData['body'] == 'LOGIN':
-            self.lisaprotocol.answerToClient(json.dumps(
-                {
-                    'body': self._('The client %(from)s has joined the zone %(zone)s') %
-                            {'from': jsonData['from'], 'zone': jsonData['zone']},
-                    'command': 'LOGIN',
-                    'clients_zone': ['sender'],
-                    'from': 'LISA Server',
-                    'type': 'command',
-                    'bot_name': self.configuration['bot_name']
-                }
-            ))
-        else:
-            print jsonData
