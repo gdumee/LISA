@@ -31,6 +31,7 @@ class PluginManager(object):
         return self.enabled_plugins
 
     def loadPlugins(self):
+        self.enabled_plugins = []
         for plugin in self.database.plugins.find( { "enabled": True, "lang": configuration['lang'] } ):
             self.enabled_plugins.append(str(plugin['name']))
 
