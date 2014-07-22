@@ -86,7 +86,7 @@ class LisaProtocol(LineReceiver):
         # Read type
         if jsonData['type'] == "chat":
             self.client['dialog'].parse(jsonData = jsonData)
-        elif jsonData['type'] == "command":
+        elif jsonData['type'] == "command" and jsonData.has_key('command') == True:
             # Select command
             if jsonData['command'].lower() == 'login req':
                 # Get name and zone
@@ -167,6 +167,13 @@ class ClientFactory(Factory):
         self.clients = {}
         self.zones = {}
         self.syspath = sys.path
+
+    #-----------------------------------------------------------------------------
+    def stopFactory(self):
+        # Clean clients
+        for c in self.clients:
+            self.clients[c].pop('dialog')
+            self.clients[c].pop('context')
 
     #-----------------------------------------------------------------------------
     def buildProtocol(self, addr):
