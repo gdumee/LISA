@@ -12,14 +12,14 @@ import gettext
 from lisa.server.ConfigManager import ConfigManagerSingleton
 from lisa.server.web.manageplugins.models import Intent, Rule
 from lisa.Neotique.NeoDialog import NeoDialog
+from lisa.Neotique.NeoTrans import NeoTrans
 
 # Create a task manager to pass it to other services
 
 configuration_server = ConfigManagerSingleton.get().getConfiguration()
 dir_path = ConfigManagerSingleton.get().getPath()
 path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
-_ = translation = gettext.translation(domain='lisa', localedir=path, fallback=True,
-                                              languages=[configuration_server['lang']]).ugettext
+_ = NeoTrans(domain = 'lisa', localedir = path, fallback = True, languages=[configuration_server['lang']]).Trans
 
 taskman = ScheduledTaskManager(configuration_server)
 scheduler = ScheduledTaskService(taskman)
@@ -43,7 +43,7 @@ class LisaProtocol(LineReceiver):
         
     #-----------------------------------------------------------------------------
     def connectionMade(self):
-        log.msg(_("New connection with client {name} in zone {zone}".format(name = self.client['name'], zone = self.client['zone'])))
+        log.msg("New connection from client {name} in zone {zone}".format(name = self.client['name'], zone = self.client['zone']))
 
         # Add protocol to client
         self.client['protocols'][self.uid] = {'object': self}
@@ -59,10 +59,11 @@ class LisaProtocol(LineReceiver):
         
     #-----------------------------------------------------------------------------
     def connectionLost(self, reason):
-        log.err(_("Lost connection with client {name} in zone {zone}.  Reason: {reason}".format(name = self.client['name'], zone = self.client['zone'], reason = str(reason))))
+        log.err("Lost connection with client {name} in zone {zone} with reason : {reason}".format(name = self.client['name'], zone = self.client['zone'], reason = str(reason)))
 
         # Remove protocol from client
         self.client['protocols'].pop(self.uid)
+
 
     #-----------------------------------------------------------------------------
     def lineReceived(self, data):
@@ -80,7 +81,7 @@ class LisaProtocol(LineReceiver):
 
         # Check format
         if jsonData.has_key('type') == False:
-            self.sendError(_("Error : Unknwon input format"))
+            self.sendError(_("Error : no type in input JSON"))
             return
 
         # Read type
@@ -257,7 +258,7 @@ class ClientFactory(Factory):
     def LisaReload(self):
         global enabled_plugins
 
-        log.msg(_('Reloading L.I.S.A Engine'))
+        log.msg("Reloading engine")
         sys.path = self.syspath
         enabled_plugins = []
         self.build_activeplugins()
@@ -265,7 +266,7 @@ class ClientFactory(Factory):
     #-----------------------------------------------------------------------------
     def SchedReload(self):
         global taskman
-        log.msg(_("Reloading Task Scheduler"))
+        log.msg("Reloading task scheduler")
         self.taskman = taskman
         return self.taskman.reload()
 

@@ -1,59 +1,26 @@
 msgid ""
-msgstr ""
-"Project-Id-Version: LISA\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-05-17 19:30+0200\n"
-"PO-Revision-Date: 2014-05-17 17:31+0000\n"
-"Last-Translator: Seraf42 <nephilim.seraphin@gmail.com>\n"
-"Language-Team: French (http://www.transifex.com/projects/p/lisa/language/fr/)\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Language: fr\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
-
-msgid "The client %(from)s has joined the zone %(zone)s"
-msgstr  "Le client %(from)s a rejoint la zone %(zone)s"
-
-msgid "Before 'before' rule: %(jsonInput)s"
-msgstr  ""
-
-msgid "After 'before' rule: %(jsonInput)s"
-msgstr  ""
-
-msgid "no_plugin"
-msgstr  "(10, \"Je n'ai pas cette fonctionnalité\"),"
-        "(10, \"Votre demande ne fait pas partie de mes fonctions\"),"
-        "(10, \"Un jour j'en serais peut-être capable\"),"
-        "(10, \"Cette tâche est bien trop complexe pour moi\"),"
-        "(10, \"Je ne sais pas encore répondre à cette demande\")"
-        
-msgid "Before 'after' rule: %(jsonOutput)s"
-msgstr  ""
-
-msgid "After 'after' rule: %(jsonOutput)s"
-msgstr  ""
-
-msgid "Lost connection.  Reason: %(reason)s"
-msgstr  ""
+msgstr  "Project-Id-Version: LISA 1.0\n"
+        "Report-Msgid-Bugs-To: \n"
+        "POT-Creation-Date: 2014-05-17 19:30+0200\n"
+        "PO-Revision-Date: 2014-05-17 17:31+0000\n"
+        "Last-Translator: Seraf42 <nephilim.seraphin@gmail.com>\n"
+        "Language-Team: French (http://www.transifex.com/projects/p/lisa/language/fr/)\n"
+        "Language: fr\n"
+        "MIME-Version: 1.0\n"
+        "Content-Type: text/plain; charset=UTF-8\n"
+        "Content-Transfer-Encoding: 8bit\n"
 
 msgid "Error : Invalid JSON"
-msgstr  ""
+msgstr  "Erreur : JSON invalide"
 
-msgid "Reloading L.I.S.A Engine"
-msgstr  ""
+msgid "intents_list"
+msgstr  "Je peux {intentslist}"
 
-msgid "Reloading Task Scheduler"
-msgstr  ""
+msgid "Error : Unknwon input type {type}"
+msgstr  "Erreur : type inconnu en entrée : {type}"
 
-msgid "Started to connect."
-msgstr  ""
+msgid "Error : no type in input JSON"
+msgstr  "Erreur : aucun type dans le JSON d'entrée"
 
-msgid "Connected to Lisa."
-msgstr  ""
-
-msgid "Resetting reconnection delay"
-msgstr  ""
-
-msgid "Connection failed. Reason: %(reason)s"
-msgstr  ""
+msgid "Error : Unknwon command type {command}"
+msgstr  "Erreur : commande inconnue en entrée : {command}"
