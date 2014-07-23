@@ -45,7 +45,7 @@ class IPlugin(object):
         context.speakToClient(plugin_uid = self.uid, text = text, client_uids = client_uids, zone_uids = zone_uids)
 
     #-----------------------------------------------------------------------------
-    def askClient(self, text, answer_cbk, context = None, client_uids = [], zone_uids = []):
+    def askClient(self, text, answer_cbk, context = None, wit_context = {}, client_uids = [], zone_uids = []):
         """
         Ask a question, and wait for an answer
         
@@ -64,8 +64,8 @@ class IPlugin(object):
         """
         # if no context
         if context is None:
-            NeoDialogContext.globalAskClient(plugin_uid = self.uid, text = text, answer_cbk = answer_cbk, client_uids = client_uids, zone_uids = zone_uids)
+            NeoDialogContext.globalAskClient(plugin_uid = self.uid, text = text, wit_context = wit_context, answer_cbk = answer_cbk, client_uids = client_uids, zone_uids = zone_uids)
             return
             
         # Update context
-        context.askClient(plugin_uid = self.uid, text = text, answer_cbk = answer_cbk, client_uids = client_uids, zone_uids = zone_uids)
+        context.askClient(plugin_uid = self.uid, text = text, wit_context = wit_context, answer_cbk = answer_cbk, client_uids = client_uids, zone_uids = zone_uids)
