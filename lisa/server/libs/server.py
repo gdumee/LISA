@@ -13,6 +13,7 @@ from lisa.server.ConfigManager import ConfigManagerSingleton
 from lisa.server.web.manageplugins.models import Intent, Rule
 from lisa.Neotique.NeoDialog import NeoDialog
 from lisa.Neotique.NeoTrans import NeoTrans
+from twisted.internet.address import IPv4Address
 
 # Create a task manager to pass it to other services
 
@@ -152,7 +153,7 @@ class LisaProtocolSingleton(object):
         Actually create an instance
         """
         if self.__instance is None:
-            self.__instance = LisaFactorySingleton.get().buildProtocol("web_interface")
+            self.__instance = LisaFactorySingleton.get().buildProtocol(IPv4Address('TCP', "web_interface", 0))
         return self.__instance
     get = classmethod(get)
 
@@ -184,8 +185,9 @@ class ClientFactory(Factory):
         # Search if we already had a connection
         client = None
         client_uid = None
+        addr_ip = addr.host
         for c in self.clients:
-            if self.clients[c]['addr'] == addr:
+            if self.clients[c]['addr_ip'] == addr_ip:
                 client = self.clients[c]
                 client_uid = c
                 break
@@ -194,7 +196,7 @@ class ClientFactory(Factory):
         if client is None:
             # Add client
             client_uid = str(uuid.uuid1())
-            self.clients[client_uid] = {'uid': client_uid, 'addr': addr, 'protocols': {}, 'name': "uninitialized", 'zone': "uninitialized", 'zone_uid': None}
+            self.clients[client_uid] = {'uid': client_uid, 'addr_ip': addr_ip, 'protocols': {}, 'name': "uninitialized", 'zone': "uninitialized", 'zone_uid': None}
             client = self.clients[client_uid]
             
             # Each client has its own dialog instance
