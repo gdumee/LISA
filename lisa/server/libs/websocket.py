@@ -39,8 +39,14 @@ class WebSocketProtocol(WebSocketServerProtocol):
         else:
             self.conn = reactor.connectTCP(self.configuration['lisa_url'],
                                            self.configuration['lisa_engine_port'], self.lisaclientfactory)
+                                           
+        self.logged = False
 
     def onMessage(self, msg, binary):
+        if self.logged == False:
+            self.lisaclientfactory.protocol.sendMessage(json.dumps(
+                {"from": "Lisa-Web","zone": "Lisa-Web", "type": "command", "command": "login req"}))
+            self.logged = True
         self.lisaclientfactory.protocol.sendMessage(json.dumps(
             {"from": "Lisa-Web","type": "chat", "body": unicode(msg.decode('utf-8')), "zone": "WebSocket"}))
 
