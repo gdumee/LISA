@@ -7,11 +7,12 @@ import gettext
 import lisa.server
 
 from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.Neotique.NeoTrans import NeoTrans
 
 configuration = ConfigManagerSingleton.get().getConfiguration()
 path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
-_ = translation = gettext.translation(domain='intents', localedir=path, fallback=True,
-                                              languages=[configuration['lang']]).ugettext
+_ = NeoTrans(domain='lisa', localedir=path, fallback=True,
+                                              languages=[configuration['lang']]).Trans
 
 class Intents:
     def __init__(self, lisa=None):
@@ -35,5 +36,5 @@ class Intents:
 
         return {"plugin": "Intents",
                 "method": "list",
-                "body": unicode(_('I can %(intentslist)s' % {'intentslist': ', '.join(intentstr)}))
+                "body": _("intents_list").format(intentslist = ', '.join(intentstr))
         }
