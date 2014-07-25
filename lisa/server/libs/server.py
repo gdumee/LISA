@@ -13,7 +13,6 @@ from lisa.server.ConfigManager import ConfigManagerSingleton
 from lisa.server.web.manageplugins.models import Intent, Rule
 from lisa.Neotique.NeoDialog import NeoDialog
 from lisa.Neotique.NeoTrans import NeoTrans
-from twisted.internet.address import IPv4Address
 
 # Create a task manager to pass it to other services
 
@@ -37,17 +36,14 @@ class ServerTLSContext(ssl.DefaultOpenSSLContextFactory):
 #-----------------------------------------------------------------------------
 class LisaProtocol(LineReceiver):
     #-----------------------------------------------------------------------------
-    def __init__(self, factory, client_uid):
+    def __init__(self, factory):
         self.uid = str(uuid.uuid1())
         self.factory = factory
-        self.client = factory.clients[client_uid]
+        self.client = None
         
     #-----------------------------------------------------------------------------
     def connectionMade(self):
-        log.msg("New connection from client {name} in zone {zone}".format(name = self.client['name'], zone = self.client['zone']))
-
-        # Add protocol to client
-        self.client['protocols'][self.uid] = {'object': self}
+        log.msg("New connection from a client")
 
         # TLS connection
         if configuration_server['enable_secure_mode']:
@@ -60,16 +56,17 @@ class LisaProtocol(LineReceiver):
         
     #-----------------------------------------------------------------------------
     def connectionLost(self, reason):
-        log.err("Lost connection with client {name} in zone {zone} with reason : {reason}".format(name = self.client['name'], zone = self.client['zone'], reason = str(reason)))
-
         # Remove protocol from client
-        self.client['protocols'].pop(self.uid)
-
+        if self.client is not None:
+            log.err("Lost connection with client {name} in zone {zone} with reason : {reason}".format(name = self.client['name'], zone = self.client['zone'], reason = str(reason)))
+            self.client['protocols'].pop(self.uid)
+        else:
+            log.err("Lost connection with unlogged client")
 
     #-----------------------------------------------------------------------------
     def lineReceived(self, data):
         # Debug
-        if configuration_server['debug']['debug_output']:
+        if self.client is not None and configuration_server['debug']['debug_output']:
             log.msg("INPUT from {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(data)))
 
         # Try to get Json
@@ -86,23 +83,31 @@ class LisaProtocol(LineReceiver):
             return
 
         # Read type
-        if jsonData['type'] == "chat":
+        if self.client is not None and jsonData['type'] == "chat":
             self.client['dialog'].parse(jsonData = jsonData)
         elif jsonData['type'] == "command" and jsonData.has_key('command') == True:
             # Select command
             if jsonData['command'].lower() == 'login req':
-                # Get name and zone
-                self.client['name'] = jsonData['from']
-                self.client['zone'] = jsonData['zone']
-                self.client['zone_uid'] = self.factory.getZone(zone_name = jsonData['zone'], client = self.client)
+                # Init client
+                self.initClient(client_name = jsonData['from'], zone_name = jsonData['zone'])
 
+                # Debug
+                if configuration_server['debug']['debug_output']:
+                    log.msg("INPUT from {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(data)))
+                
                 # Send login ack
                 jsonOut = {'type': 'command', 'command': 'login ack', 'bot_name': configuration_server['bot_name']}
                 self.sendToClient(jsonOut)
             else:
-                self.sendError(_("Error : Unknwon command type {command}").format(type = jsonData['command']))
+                self.sendError(_("Error : Unknwon command type {command}").format(command = jsonData['command']))
         else:
             self.sendError(_("Error : Unknwon input type {type}").format(type = jsonData['type']))
+
+    #-----------------------------------------------------------------------------
+    def initClient(self, client_name, zone_name):
+        # Get client
+        self.client = self.factory.initClient(client_name = client_name, zone_name = zone_name)
+        self.client['protocols'][self.uid] = {'object': self}
 
     #-----------------------------------------------------------------------------
     def sendError(self, msg):
@@ -112,6 +117,10 @@ class LisaProtocol(LineReceiver):
 
     #-----------------------------------------------------------------------------
     def sendToClient(self, jsonData):
+        # If no client logged in
+        if self.client is None:
+            return
+            
         # Add info to data
         jsonData['from'] = 'Server'
         jsonData['to'] = self.client['name']
@@ -143,8 +152,7 @@ class LisaProtocolSingleton(object):
         Initialisation: this class should not be initialised
         explicitly and the ``get`` classmethod must be called instead.
         """
-
-        if self.__instance is not None:
+        if LisaProtocolSingleton.__instance is not None:
             raise Exception("Singleton can't be created twice !")
 
     #-----------------------------------------------------------------------------
@@ -152,9 +160,10 @@ class LisaProtocolSingleton(object):
         """
         Actually create an instance
         """
-        if self.__instance is None:
-            self.__instance = LisaFactorySingleton.get().buildProtocol(IPv4Address('TCP', "web_interface", 0))
-        return self.__instance
+        if LisaProtocolSingleton.__instance is None:
+            LisaProtocolSingleton.__instance = LisaFactorySingleton.get().buildProtocol(None)
+
+        return LisaProtocolSingleton.__instance
     get = classmethod(get)
 
 
@@ -179,39 +188,50 @@ class ClientFactory(Factory):
 
     #-----------------------------------------------------------------------------
     def buildProtocol(self, addr):
+        # Create protocol
+        return LisaProtocol(factory = self)
+
+    #-----------------------------------------------------------------------------
+    def initClient(self, client_name, zone_name):
         # Lock access
         self.__lock.acquire()
         
+        # Get zone
+        zone_uid = self.getZone(zone_name)
+
         # Search if we already had a connection
         client = None
         client_uid = None
-        addr_ip = addr.host
         for c in self.clients:
-            if self.clients[c]['addr_ip'] == addr_ip:
-                client = self.clients[c]
-                client_uid = c
-                break
+            if self.clients[c]['name'] == client_name and self.clients[c]['zone'] == zone_name:
+                return self.clients[c]
         
         # If not found
         if client is None:
             # Add client
             client_uid = str(uuid.uuid1())
-            self.clients[client_uid] = {'uid': client_uid, 'addr_ip': addr_ip, 'protocols': {}, 'name': "uninitialized", 'zone': "uninitialized", 'zone_uid': None}
+            self.clients[client_uid] = {'uid': client_uid, 'protocols': {}, 'name': client_name, 'zone': zone_name, 'zone_uid': zone_uid}
             client = self.clients[client_uid]
             
             # Each client has its own dialog instance
             client['dialog'] = NeoDialog(factory = self, client_uid = client_uid)
 
-        # Create protocol
-        p = LisaProtocol(factory = self, client_uid = client_uid)
-            
+            # Add client to zone
+            found_flag = False
+            for c in self.zones[zone_uid]['client_uids']:
+                if c == client['uid']:
+                    found_flag = True
+                    break
+            if found_flag == False:
+                self.zones[zone_uid]['client_uids'].append(client['uid'])
+
         # Release access
         self.__lock.release()
 
-        return p
+        return client
 
     #-----------------------------------------------------------------------------
-    def getZone(self, zone_name, client):
+    def getZone(self, zone_name):
         # Lock access
         self.__lock.acquire()
         
@@ -226,19 +246,10 @@ class ClientFactory(Factory):
         
         # If not found
         if zone is None:
-            # Add client
+            # Create zone
             zone_uid = str(uuid.uuid1())
             self.zones[zone_uid] = {'name': zone_name, 'client_uids': []}
             zone = self.zones[zone_uid]
-
-        # Add client to zone
-        found_flag = False
-        for c in zone['client_uids']:
-            if c == client['uid']:
-                found_flag = True
-                break
-        if found_flag == False:
-            zone['client_uids'].append(client['uid'])
 
         # Release access
         self.__lock.release()
