@@ -40,7 +40,7 @@ class LisaProtocol(LineReceiver):
         self.uid = str(uuid.uuid1())
         self.factory = factory
         self.client = None
-        
+
     #-----------------------------------------------------------------------------
     def connectionMade(self):
         log.msg("New connection from a client")
@@ -53,7 +53,7 @@ class LisaProtocol(LineReceiver):
             )
             self.transport.startTLS(ctx, self.factory)
             pass
-        
+
     #-----------------------------------------------------------------------------
     def connectionLost(self, reason):
         # Remove protocol from client
@@ -94,7 +94,7 @@ class LisaProtocol(LineReceiver):
                 # Debug
                 if configuration_server['debug']['debug_output']:
                     log.msg("INPUT from {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(data)))
-                
+
                 # Send login ack
                 jsonOut = {'type': 'command', 'command': 'login ack', 'bot_name': configuration_server['bot_name']}
                 self.sendToClient(jsonOut)
@@ -120,7 +120,7 @@ class LisaProtocol(LineReceiver):
         # If no client logged in
         if self.client is None:
             return
-            
+
         # Add info to data
         jsonData['from'] = 'Server'
         jsonData['to'] = self.client['name']
@@ -195,7 +195,7 @@ class ClientFactory(Factory):
     def initClient(self, client_name, zone_name):
         # Lock access
         self.__lock.acquire()
-        
+
         # Get zone
         zone_uid = self.getZone(zone_name)
 
@@ -205,14 +205,14 @@ class ClientFactory(Factory):
         for c in self.clients:
             if self.clients[c]['name'] == client_name and self.clients[c]['zone'] == zone_name:
                 return self.clients[c]
-        
+
         # If not found
         if client is None:
             # Add client
             client_uid = str(uuid.uuid1())
             self.clients[client_uid] = {'uid': client_uid, 'protocols': {}, 'name': client_name, 'zone': zone_name, 'zone_uid': zone_uid}
             client = self.clients[client_uid]
-            
+
             # Each client has its own dialog instance
             client['dialog'] = NeoDialog(factory = self, client_uid = client_uid)
 
@@ -234,7 +234,7 @@ class ClientFactory(Factory):
     def getZone(self, zone_name):
         # Lock access
         self.__lock.acquire()
-        
+
         # Search zone
         zone = None
         zone_uid = None
@@ -243,7 +243,7 @@ class ClientFactory(Factory):
                 zone = self.zones[z]
                 zone_uid = z
                 break
-        
+
         # If not found
         if zone is None:
             # Create zone
