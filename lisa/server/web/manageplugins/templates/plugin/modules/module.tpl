@@ -13,7 +13,7 @@ class {{ plugin_name }}(IPlugin):
         self._ = translation = gettext.translation(domain='{{ plugin_name_lower }}',
                                                    localedir=self.path,
                                                    fallback=True,
-                                                   languages=[self.configuration_lisa['lang']]).ugettext
+                                                   languages=[self.configuration_server['lang']]).ugettext
 
     def sayHello(self, jsonInput):
         return {"plugin": "{{ plugin_name }}",

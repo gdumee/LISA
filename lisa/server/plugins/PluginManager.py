@@ -11,10 +11,10 @@ from pymongo import MongoClient
 from twisted.python import log
 import os
 
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
-dir_path = ConfigManagerSingleton.get().getPath()
+configuration = ConfigManager.getConfiguration()
+dir_path = configuration['path']
 
 
 class PluginManager(object):
@@ -32,7 +32,7 @@ class PluginManager(object):
 
     def loadPlugins(self):
         self.enabled_plugins = []
-        for plugin in self.database.plugins.find( { "enabled": True, "lang": configuration['lang'] } ):
+        for plugin in self.database.plugins.find( { "enabled": True, "lang": configuration['lang_short'] } ):
             self.enabled_plugins.append(str(plugin['name']))
 
         return self.enabled_plugins

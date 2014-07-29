@@ -1,4 +1,18 @@
 # -*- coding: UTF-8 -*-
+#-----------------------------------------------------------------------------
+# project     : Lisa client
+# module      : client
+# file        : service.py
+# description : Lisa client twisted service
+# author      : G.Dumee
+#-----------------------------------------------------------------------------
+# copyright   : Neotique
+#-----------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------
+# Imports
+#-----------------------------------------------------------------------------
 import os
 from twisted.internet import reactor, ssl
 from twisted.application import internet, service
@@ -7,8 +21,21 @@ from twisted.python import threadpool, log
 from autobahn.twisted.websocket import WebSocketServerFactory
 from autobahn.twisted.resource import WebSocketResource
 from OpenSSL import SSL
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
+from subprocess import call
+import glob
 
+
+#-----------------------------------------------------------------------------
+# Globals
+#-----------------------------------------------------------------------------
+# Creating MultiService
+application = service.Application('LISA')
+
+
+#-----------------------------------------------------------------------------
+# ThreadPoolService
+#-----------------------------------------------------------------------------
 class ThreadPoolService(service.Service):
     def __init__(self, pool):
         self.pool = pool
@@ -22,27 +49,45 @@ class ThreadPoolService(service.Service):
         self.pool.stop()
 
 
-# Twisted Application Framework setup:
-application = service.Application('LISA')
+#-----------------------------------------------------------------------------
+# SSL client certificat verification callback
+#-----------------------------------------------------------------------------
+def ClientAuthVerifyCallback(connection, x509, errnum, errdepth, ok):
+    if not ok:
+        print 'Invalid client certificat :', x509.get_subject()
+        return False
 
+    print "Client certificat is OK"
+    return ok
+
+
+#-----------------------------------------------------------------------------
+# Make twisted service
+#-----------------------------------------------------------------------------
 def makeService(config):
     from django.core.handlers.wsgi import WSGIHandler
     os.environ['DJANGO_SETTINGS_MODULE'] = 'lisa.server.web.weblisa.settings'
 
-
+    # Get configuration
     if config['configuration']:
-        ConfigManagerSingleton.get().setConfiguration(config['configuration'])
+        if ConfigManager.setConfiguration(config['configuration']) == False:
+            log.err("Error : configuration file invalid")
+            return
 
-    configuration = ConfigManagerSingleton.get().getConfiguration()
-    dir_path = ConfigManagerSingleton.get().getPath()
+    configuration = ConfigManager.getConfiguration()
+    dir_path = configuration['path']
 
     from lisa.server import libs
 
-    # Creating MultiService
+    # Multiservice mode
     multi = service.MultiService()
+    multi.setServiceParent(application)
     pool = threadpool.ThreadPool()
     tps = ThreadPoolService(pool)
     tps.setServiceParent(multi)
+
+    libs.scheduler.setServiceParent(multi)
+    libs.Initialize()
 
     # Creating the web stuff
     resource_wsgi = wsgi.WSGIResource(reactor, tps.pool, WSGIHandler())
@@ -50,56 +95,54 @@ def makeService(config):
     staticrsrc = static.File('/'.join([dir_path,'web/interface/static']))
     root.putChild("static", staticrsrc)
 
-    # Create the websocket
+    # Start client protocol factory
+    if configuration['enable_secure_mode']:
+        # Create a SSL context factory for clients
+        clientAuthContextFactory = ssl.DefaultOpenSSLContextFactory(configuration['lisa_ssl_key'], configuration['lisa_ssl_crt'])
+
+        # Add client authentification to SSL context
+        ctx = clientAuthContextFactory.getContext()
+        ctx.set_verify(SSL.VERIFY_PEER | SSL.VERIFY_FAIL_IF_NO_PEER_CERT, ClientAuthVerifyCallback)
+
+        # Load client certificates authorized to connect
+        cert_path = dir_path + '/' + 'configuration/ssl/public/'
+        outfile = os.path.normpath(dir_path + '/' + 'configuration/ssl/public/server.pem')
+        with open(outfile, "w") as f:
+            wildcard = os.path.normpath("{path}*.crt".format(path = cert_path))
+            for infile in glob.glob(wildcard):
+                call(['openssl', 'x509', '-in', infile, '-text'], stdout = f)
+        ctx.load_verify_locations(outfile)
+
+        # Initialize client factory
+        engineService = internet.SSLServer(configuration['lisa_port'], libs.ClientFactorySingleton.get(), clientAuthContextFactory)
+
+        # Create a SSL context factory for web interface
+        webAuthContextFactory = ssl.DefaultOpenSSLContextFactory(configuration['lisa_ssl_key'], configuration['lisa_ssl_crt'])
+
+        # Initialize web factory
+        webService = internet.SSLServer(configuration['lisa_web_port'], server.Site(root), webAuthContextFactory)
+    else:
+        # Initialize factories
+        engineService = internet.TCPServer(configuration['lisa_port'], libs.ClientFactorySingleton.get())
+        webService = internet.TCPServer(configuration['lisa_web_port'], server.Site(root))
+
+    # Create the websocket factory
     if configuration['enable_secure_mode']:
         socketfactory = WebSocketServerFactory("wss://" + configuration['lisa_url'] + ":" +
-                                               str(configuration['lisa_web_port_ssl']),debug=False)
+                                               str(configuration['lisa_web_port']), debug = False)
+
     else:
+        # Initialize factories
         socketfactory = WebSocketServerFactory("ws://" + configuration['lisa_url'] + ":" +
-                                               str(configuration['lisa_web_port']),debug=False)
+                                               str(configuration['lisa_web_port']), debug = False)
     socketfactory.protocol = libs.WebSocketProtocol
-    socketfactory.protocol.configuration, socketfactory.protocol.dir_path = configuration, dir_path
     socketresource = WebSocketResource(socketfactory)
     root.putChild("websocket", socketresource)
 
-    # Configuring servers to launch
-    if configuration['enable_secure_mode'] or configuration['enable_unsecure_mode']:
-        if configuration['enable_secure_mode']:
-            SSLContextFactoryEngine = ssl.DefaultOpenSSLContextFactory(
-                os.path.normpath(dir_path + '/' + 'configuration/ssl/server.key'),
-                os.path.normpath(dir_path + '/' + 'configuration/ssl/server.crt')
-            )
-            SSLContextFactoryWeb = ssl.DefaultOpenSSLContextFactory(
-                os.path.normpath(dir_path + '/' + 'configuration/ssl/server.key'),
-                os.path.normpath(dir_path + '/' + 'configuration/ssl/server.crt')
-            )
-            ctx = SSLContextFactoryEngine.getContext()
-            ctx.set_verify(
-                SSL.VERIFY_PEER | SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
-                libs.verifyCallback
-            )
-            # Since we have self-signed certs we have to explicitly
-            # tell the server to trust them.
-            with open(os.path.normpath(dir_path + '/' + 'configuration/ssl/server.pem'), 'w') as outfile:
-                for file in os.listdir(os.path.normpath(dir_path + '/' + 'configuration/ssl/public/')):
-                    with open(os.path.normpath(dir_path + '/' + 'configuration/ssl/public/'+file)) as infile:
-                        for line in infile:
-                            outfile.write(line)
+    # Add services to application
+    engineService.setServiceParent(multi)
+    webService.setServiceParent(multi)
 
-
-            ctx.load_verify_locations(os.path.normpath(dir_path + '/' + 'configuration/ssl/server.pem'))
-            internet.SSLServer(configuration['lisa_web_port_ssl'],
-                               server.Site(root), SSLContextFactoryWeb).setServiceParent(multi)
-            internet.SSLServer(configuration['lisa_engine_port_ssl'],
-                               libs.LisaFactorySingleton.get(), SSLContextFactoryEngine).setServiceParent(multi)
-        if configuration['enable_unsecure_mode']:
-            # Serve it up:
-            internet.TCPServer(configuration['lisa_web_port'], server.Site(root)).setServiceParent(multi)
-            internet.TCPServer(configuration['lisa_engine_port'], libs.LisaFactorySingleton.get()).setServiceParent(multi)
-
-    else:
-        exit(1)
-    libs.scheduler.setServiceParent(multi)
-    multi.setServiceParent(application)
-    libs.Initialize()
     return multi
+
+# --------------------- End of service.py  ---------------------

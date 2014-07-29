@@ -7,9 +7,9 @@ from lisa.server.plugins.PluginManager import PluginManagerSingleton
 from django.utils import six
 import lisa.plugins
 
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
+configuration = ConfigManager.getConfiguration()
 
 class Command(BaseCommand):
     def __init__(self):

@@ -2,10 +2,10 @@
 import os
 import json
 import sys
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
-dir_path = ConfigManagerSingleton.get().getPath()
+configuration = ConfigManager.getConfiguration()
+dir_path = configuration['path']
 
 APP_DIR = os.path.dirname( globals()['__file__'] )
 PROJECT_PATH = os.path.abspath(os.path.dirname(__file__) + '/../')

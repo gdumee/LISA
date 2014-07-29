@@ -1,4 +1,18 @@
 # -*- coding: UTF-8 -*-
+#-----------------------------------------------------------------------------
+# project     : Lisa server
+# module      : server
+# file        : server.py
+# description : Lisa server protocol management
+# author      : G.Dumee
+#-----------------------------------------------------------------------------
+# copyright   : Neotique
+#-----------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------
+# Imports
+#-----------------------------------------------------------------------------
 import os, json, sys, uuid, threading
 from twisted.internet.protocol import Factory
 from twisted.protocols.basic import LineReceiver
@@ -9,22 +23,25 @@ from lisa.server.libs.txscheduler.manager import ScheduledTaskManager
 from lisa.server.libs.txscheduler.service import ScheduledTaskService
 from lisa.server.plugins.PluginManager import PluginManagerSingleton
 import gettext
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 from lisa.server.web.manageplugins.models import Intent, Rule
 from lisa.Neotique.NeoDialog import NeoDialog
 from lisa.Neotique.NeoTrans import NeoTrans
 
-# Create a task manager to pass it to other services
 
-configuration_server = ConfigManagerSingleton.get().getConfiguration()
-dir_path = ConfigManagerSingleton.get().getPath()
-path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
-_ = NeoTrans(domain = 'lisa', localedir = path, fallback = True, languages=[configuration_server['lang']]).Trans
+#-----------------------------------------------------------------------------
+# Globals
+#-----------------------------------------------------------------------------
+configuration = ConfigManager.getConfiguration()
+_ = configuration['trans']
 
-taskman = ScheduledTaskManager(configuration_server)
+taskman = ScheduledTaskManager(configuration)
 scheduler = ScheduledTaskService(taskman)
 
 
+#-----------------------------------------------------------------------------
+# ServerTLSContext
+#-----------------------------------------------------------------------------
 class ServerTLSContext(ssl.DefaultOpenSSLContextFactory):
     def __init__(self, *args, **kw):
         kw['sslmethod'] = SSL.TLSv1_METHOD
@@ -35,6 +52,9 @@ class ServerTLSContext(ssl.DefaultOpenSSLContextFactory):
 # LisaProtocol : built by factory on every client connection
 #-----------------------------------------------------------------------------
 class LisaProtocol(LineReceiver):
+    """
+    """
+
     #-----------------------------------------------------------------------------
     def __init__(self, factory):
         self.uid = str(uuid.uuid1())
@@ -46,13 +66,12 @@ class LisaProtocol(LineReceiver):
         log.msg("New connection from a client")
 
         # TLS connection
-        if configuration_server['enable_secure_mode']:
+        if configuration['enable_secure_mode']:
             ctx = ServerTLSContext(
-                privateKeyFileName=os.path.normpath(dir_path + '/' + 'configuration/ssl/server.key'),
-                certificateFileName= os.path.normpath(dir_path + '/' + 'configuration/ssl/server.crt')
+                privateKeyFileName = configuration['lisa_ssl_key'],
+                certificateFileName = configuration['lisa_ssl_crt']
             )
             self.transport.startTLS(ctx, self.factory)
-            pass
 
     #-----------------------------------------------------------------------------
     def connectionLost(self, reason):
@@ -66,7 +85,7 @@ class LisaProtocol(LineReceiver):
     #-----------------------------------------------------------------------------
     def lineReceived(self, data):
         # Debug
-        if self.client is not None and configuration_server['debug']['debug_output']:
+        if self.client is not None and configuration['debug']['debug_output']:
             log.msg("INPUT from {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(data)))
 
         # Try to get Json
@@ -92,11 +111,11 @@ class LisaProtocol(LineReceiver):
                 self.initClient(client_name = jsonData['from'], zone_name = jsonData['zone'])
 
                 # Debug
-                if configuration_server['debug']['debug_output']:
+                if configuration['debug']['debug_output']:
                     log.msg("INPUT from {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(data)))
 
                 # Send login ack
-                jsonOut = {'type': 'command', 'command': 'login ack', 'bot_name': configuration_server['bot_name']}
+                jsonOut = {'type': 'command', 'command': 'login ack', 'bot_name': configuration['bot_name']}
                 self.sendToClient(jsonOut)
             else:
                 self.sendError(_("Error : Unknwon command type {command}").format(command = jsonData['command']))
@@ -127,7 +146,7 @@ class LisaProtocol(LineReceiver):
         jsonData['zone'] = self.client['zone']
 
         # Debug
-        if configuration_server['debug']['debug_output']:
+        if configuration['debug']['debug_output']:
             log.msg("OUTPUT to {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(jsonData)))
 
         # Send message
@@ -161,7 +180,7 @@ class LisaProtocolSingleton(object):
         Actually create an instance
         """
         if LisaProtocolSingleton.__instance is None:
-            LisaProtocolSingleton.__instance = LisaFactorySingleton.get().buildProtocol(None)
+            LisaProtocolSingleton.__instance = ClientFactorySingleton.get().buildProtocol(None)
 
         return LisaProtocolSingleton.__instance
     get = classmethod(get)
@@ -284,11 +303,10 @@ class ClientFactory(Factory):
         return self.taskman.reload()
 
 
-# TODO rename to ClientFactorySingleton
 #-----------------------------------------------------------------------------
-# LisaFactorySingleton
+# ClientFactorySingleton
 #-----------------------------------------------------------------------------
-class LisaFactorySingleton(object):
+class ClientFactorySingleton(object):
     """
     Singleton version of the Lisa Factory.
 
@@ -320,7 +338,7 @@ class LisaFactorySingleton(object):
 
 
 # Create an instance of factory, then create a protocol instance to import it everywhere
-LisaFactorySingleton.get()
+ClientFactorySingleton.get()
 LisaProtocolSingleton.get()
 
 # Load the plugins

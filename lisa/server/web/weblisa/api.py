@@ -2,17 +2,17 @@ from twisted.python import log
 from tastypie import authorization
 from django.conf.urls import *
 import json, os
-from lisa.server.libs import LisaFactorySingleton, LisaProtocolSingleton
+from lisa.server.libs import ClientFactorySingleton, LisaProtocolSingleton
 from tastypie import resources as tastyresources
 from tastypie_mongoengine import resources as mongoresources
 from tastypie.utils import trailing_slash
 from mongoengine.django.auth import User
 from wit import Wit
 
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
-dir_path = ConfigManagerSingleton.get().getPath()
+configuration = ConfigManager.getConfiguration()
+dir_path = configuration['path']
 
 
 class UserResource(mongoresources.MongoEngineResource):
@@ -228,7 +228,7 @@ class LisaResource(tastyresources.Resource):
         from tastypie.http import HttpAccepted, HttpNotModified
 
         try:
-            LisaFactorySingleton.get().LisaReload()
+            ClientFactorySingleton.get().LisaReload()
         except:
             log.err()
             return self.create_response(request, { 'status' : 'failure' }, HttpNotModified)
@@ -259,7 +259,7 @@ class LisaResource(tastyresources.Resource):
         from tastypie.http import HttpAccepted, HttpNotModified
 
         try:
-            LisaFactorySingleton.get().SchedReload()
+            ClientFactorySingleton.get().SchedReload()
         except:
             log.err()
             return self.create_response(request, { 'status' : 'failure' }, HttpNotModified)

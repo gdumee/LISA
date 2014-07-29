@@ -1,9 +1,7 @@
 # -*- coding: utf-8; tab-width: 4; indent-tabs-mode: t; python-indent: 4 -*-
 from pymongo import MongoClient
 
-from lisa.server.ConfigManager import ConfigManagerSingleton
-
-configuration = ConfigManagerSingleton.get().getConfiguration()
+from lisa.server.config_manager import ConfigManager
 
 
 class IPlugin(object):
@@ -16,12 +14,15 @@ class IPlugin(object):
         """
         Set the basic variables.
         """
-        self.configuration_lisa = configuration
-        self.mongo = MongoClient(host=self.configuration_lisa['database']['server'],
-                            port=self.configuration_lisa['database']['port'])
+        self.configuration_server = ConfigManager.getConfiguration()
+        self.mongo = MongoClient(host=self.configuration_server['database']['server'],
+                            port=self.configuration_server['database']['port'])
 
-        # UID is set by DialogContext just after constructor
+        # UID will be set by DialogContext just after constructor
         self.uid = None
+
+        # TODO remove when renamed in sub plugins
+        self.configuration_lisa = self.configuration_server
 
     #-----------------------------------------------------------------------------
     def speakToClient(self, text, context = None, client_uids = None, zone_uids = None):

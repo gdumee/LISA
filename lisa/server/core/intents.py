@@ -6,18 +6,15 @@ from lisa.server.web.manageplugins.models import Intent as oIntents
 import gettext
 import lisa.server
 
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 from lisa.Neotique.NeoTrans import NeoTrans
-
-configuration = ConfigManagerSingleton.get().getConfiguration()
-path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
-_ = NeoTrans(domain='lisa', localedir=path, fallback=True,
-                                              languages=[configuration['lang']]).Trans
 
 class Intents:
     def __init__(self, lisa=None):
         self.lisa = lisa
-        self.configuration = configuration
+        self.configuration = ConfigManager.getConfiguration()
+        self._ = self.configuration['trans']
+
         mongo = MongoClient(host=self.configuration['database']['server'],
                             port=self.configuration['database']['port'])
         self.database = mongo.lisa
@@ -36,5 +33,5 @@ class Intents:
 
         return {"plugin": "Intents",
                 "method": "list",
-                "body": _("intents_list").format(intentslist = ', '.join(intentstr))
+                "body": self._("intents_list").format(intentslist = ', '.join(intentstr))
         }
