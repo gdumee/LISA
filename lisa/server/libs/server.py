@@ -25,7 +25,7 @@ from lisa.server.plugins.PluginManager import PluginManagerSingleton
 import gettext
 from lisa.server.config_manager import ConfigManager
 from lisa.server.web.manageplugins.models import Intent, Rule
-from lisa.Neotique.NeoDialog import NeoDialog
+from lisa.Neotique.NeoDialog import NeoDialog, NeoContext
 from lisa.Neotique.NeoTrans import NeoTrans
 
 
@@ -103,7 +103,7 @@ class LisaProtocol(LineReceiver):
 
         # Read type
         if self.client is not None and jsonData['type'] == "chat":
-            self.client['dialog'].parse(jsonData = jsonData)
+            self.factory.parseChat(jsonData = jsonData, client_uid = self.client['uid'])
         elif jsonData['type'] == "command" and jsonData.has_key('command') == True:
             # Select command
             if jsonData['command'].lower() == 'login req':
@@ -197,12 +197,17 @@ class ClientFactory(Factory):
         self.clients = {}
         self.zones = {}
         self.syspath = sys.path
+        NeoContext.initPlugins()
+        self.Dialog = NeoDialog(factory = self)
+
+    #-----------------------------------------------------------------------------
+    def parseChat(self, jsonData, client_uid):
+        self.Dialog.parse(jsonData, client_uid)
 
     #-----------------------------------------------------------------------------
     def stopFactory(self):
         # Clean clients
         for c in self.clients:
-            self.clients[c].pop('dialog')
             self.clients[c].pop('context')
 
     #-----------------------------------------------------------------------------
@@ -233,7 +238,7 @@ class ClientFactory(Factory):
             client = self.clients[client_uid]
 
             # Each client has its own dialog instance
-            client['dialog'] = NeoDialog(factory = self, client_uid = client_uid)
+            client['context'] = NeoContext(factory = self, client_uid = client_uid)
 
             # Add client to zone
             found_flag = False
@@ -337,12 +342,12 @@ class ClientFactorySingleton(object):
     get = classmethod(get)
 
 
-# Create an instance of factory, then create a protocol instance to import it everywhere
-ClientFactorySingleton.get()
-LisaProtocolSingleton.get()
-
 # Load the plugins
-PluginManagerSingleton.get().loadPlugins()
+#PluginManagerSingleton.get().loadPlugins()
+
+# Create an instance of factory, then create a protocol instance to import it everywhere
+#ClientFactorySingleton.get()
+#LisaProtocolSingleton.get()
 
 def Initialize():
     # Create the default core_intents_list intent

@@ -1,9 +1,25 @@
-# -*- coding: utf-8; tab-width: 4; indent-tabs-mode: t; python-indent: 4 -*-
-from pymongo import MongoClient
+# -*- coding: UTF-8 -*-
+#-----------------------------------------------------------------------------
+# project     : Lisa server
+# module      : plugins
+# file        : IPlugin.py
+# description : Mother class of all plugins
+# author      : G.Dumee
+#-----------------------------------------------------------------------------
+# copyright   : Neotique
+#-----------------------------------------------------------------------------
 
+
+#-----------------------------------------------------------------------------
+# Imports
+#-----------------------------------------------------------------------------
+from pymongo import MongoClient
 from lisa.server.config_manager import ConfigManager
 
 
+#-----------------------------------------------------------------------------
+# IPlugin
+#-----------------------------------------------------------------------------
 class IPlugin(object):
     """
     The most simple interface to be inherited when creating a plugin.
@@ -70,3 +86,5 @@ class IPlugin(object):
 
         # Update context
         context.askClient(plugin_uid = self.uid, text = text, wit_context = wit_context, answer_cbk = answer_cbk, client_uids = client_uids, zone_uids = zone_uids)
+
+# --------------------- End of IPlugin.py  ---------------------

@@ -130,7 +130,7 @@ class PluginResource(resources.MongoEngineResource):
         self.throttle_check(request)
 
         if 'plugin_name' in kwargs:
-            methods = PluginManagerSingleton.get().methodListPlugin(plugin_name=kwargs['plugin_name'])
+            methods = PluginManagerSingleton.get().methodListPlugin(plugin_name = kwargs['plugin_name'])
         else:
             methods = PluginManagerSingleton.get().methodListPlugin()
         self.log_throttled_access(request)

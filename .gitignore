@@ -36,6 +36,8 @@ nosetests.xml
 test.py
 Gtalk.xml
 
+twisted/plugins/dropin.cache
+
 *~
 *.pot
 *.pem
