@@ -19,7 +19,9 @@
             analyser.connect(context.destination);
             source.onended = function() {
                 isFinished = true;
+                cancelAnimationFrame(globalID);
             }
+            globalID = requestAnimationFrame(draw);
             source.start(0);
         }
 
@@ -38,12 +40,13 @@
             request.send(data);
         }
 
+        var globalAnimID;
         function draw() {
-            window.webkitRequestAnimationFrame(draw);
             render();
+            globalID = requestAnimationFrame(draw);
         }
         var separator=2;
-        var height=canvas.height=100;
+        var height=canvas.height=90;
         var width=canvas.width=200;
         var spacer=2;
 
@@ -70,7 +73,10 @@
     var wsuri = "{{ websocket }}://"+$(location).attr('host')+"/websocket";
 
     window.onload = function() {
+        connect_to_server()
+    };
 
+    function connect_to_server() {
         sock = new WebSocket(wsuri);
 
         sock.onopen = function() {
@@ -79,6 +85,7 @@
 
         sock.onclose = function(e) {
             console.log("Web : connection closed (" + e.code + ")");
+            setTimeout(function(){connect_to_server()}, 2000);
         }
 
         sock.onmessage = function(e) {
@@ -89,7 +96,6 @@
                 $('#chat').append('<li class="lisa"><strong>Lisa</strong> > '+JsonData.message+'</li>');
                 readme(JsonData.message);
             }
-            draw();
         }
     };
 
@@ -115,10 +121,6 @@
 
 {% block content %}
 <div class=span12>
-    <div style="height: 200px; width: 600px;overflow:auto;">
-        <ul id="chat">
-        </ul>
-    </div>
     <form id="actionForm" onsubmit="send()">
         <p>
             Message:
@@ -126,8 +128,13 @@
         </p>
         <Input type="submit" id="sendit" value="Send Message">
     </form>
+</div>
 <div class=span10>
     <canvas id='canvas1'>
     </canvas>
+</div>
+<div style="height: 400px; width: 600px;overflow:auto;">
+    <ul id="chat">
+    </ul>
 </div>
 {% endblock %}
