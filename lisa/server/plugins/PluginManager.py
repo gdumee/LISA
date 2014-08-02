@@ -158,6 +158,11 @@ class PluginManager(object):
         plugin_list = cls.getEnabledPlugins()
 
         # Delete plugin instances
+        for pk in cls.__PluginsInstances:
+            try:
+                cls.__PluginsInstances[pk].clean()
+            except:
+                pass
         cls.__PluginsInstances = {}
 
     #-----------------------------------------------------------------------------

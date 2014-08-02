@@ -187,9 +187,11 @@ class ClientFactory(Factory):
     #-----------------------------------------------------------------------------
     def stopFactory(self):
         # Clean
-        cls.__instance.clients = {}
-        cls.__instance.zones = {}
-        cls.__instance.wit = None
+        if ClientFactory.__instance is not None:
+            ClientFactory.__instance.clients = {}
+            ClientFactory.__instance.zones = {}
+            ClientFactory.__instance.wit = None
+            ClientFactory.__instance = None
 
         # Clear global contexts
         NeoContext.deinit()
