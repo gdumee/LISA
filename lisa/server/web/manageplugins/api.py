@@ -1,16 +1,14 @@
 from tastypie import authorization
 from tastypie.utils import trailing_slash
 from tastypie_mongoengine import resources, fields
-from lisa.server.web.manageplugins.models import Plugin, Description, Rule, Intent
+from lisa.server.web.manageplugins.models import Plugin, Cron, Intent
 from django.conf.urls import *
-from lisa.server.libs import ClientFactorySingleton
-from lisa.server.plugins.PluginManager import PluginManagerSingleton
+from lisa.server.libs import ClientFactory
+from lisa.server.plugins.PluginManager import PluginManager
 from tastypie.http import HttpAccepted, HttpNotModified, HttpCreated
 
 
 class PluginResource(resources.MongoEngineResource):
-    description = fields.EmbeddedListField(of='lisa.server.web.manageplugins.api.EmbeddedDescriptionResource',
-                                           attribute='description', full=True, null=True)
     class Meta:
         queryset = Plugin.objects.all()
         allowed_methods = ('get','post')
@@ -82,11 +80,11 @@ class PluginResource(resources.MongoEngineResource):
         self.is_authenticated(request)
         self.throttle_check(request)
         plugin_name = kwargs['plugin_name']
-        status = PluginManagerSingleton.get().installPlugin(plugin_name=plugin_name)
+        status = PluginManager.installPlugin(plugin_name=plugin_name)
 
         self.log_throttled_access(request)
-        ClientFactorySingleton.get().SchedReload()
-        ClientFactorySingleton.get().LisaReload()
+        ClientFactory.SchedReload()
+        ClientFactory.LisaReload()
         return self.create_response(request, status, HttpCreated)
 
 
@@ -95,10 +93,10 @@ class PluginResource(resources.MongoEngineResource):
         self.is_authenticated(request)
         self.throttle_check(request)
 
-        status = PluginManagerSingleton.get().enablePlugin(plugin_pk=kwargs['pk'])
+        status = PluginManager.enablePlugin(plugin_pk=kwargs['pk'])
         self.log_throttled_access(request)
-        ClientFactorySingleton.get().SchedReload()
-        ClientFactorySingleton.get().LisaReload()
+        ClientFactory.SchedReload()
+        ClientFactory.LisaReload()
         return self.create_response(request, status, HttpAccepted)
 
     def disable(self, request, **kwargs):
@@ -106,10 +104,10 @@ class PluginResource(resources.MongoEngineResource):
         self.is_authenticated(request)
         self.throttle_check(request)
 
-        status = PluginManagerSingleton.get().enablePlugin(plugin_pk=kwargs['pk'])
+        status = PluginManager.enablePlugin(plugin_pk=kwargs['pk'])
         self.log_throttled_access(request)
-        ClientFactorySingleton.get().SchedReload()
-        ClientFactorySingleton.get().LisaReload()
+        ClientFactory.SchedReload()
+        ClientFactory.LisaReload()
 
         return self.create_response(request, status, HttpAccepted)
 
@@ -118,10 +116,10 @@ class PluginResource(resources.MongoEngineResource):
         self.is_authenticated(request)
         self.throttle_check(request)
 
-        status = PluginManagerSingleton.get().uninstallPlugin(plugin_pk=kwargs['pk'])
+        status = PluginManager.uninstallPlugin(plugin_pk=kwargs['pk'])
         self.log_throttled_access(request)
-        ClientFactorySingleton.get().SchedReload()
-        ClientFactorySingleton.get().LisaReload()
+        ClientFactory.SchedReload()
+        ClientFactory.LisaReload()
         return self.create_response(request, status, HttpAccepted)
 
     def methodslist(self, request, **kwargs):
@@ -130,18 +128,11 @@ class PluginResource(resources.MongoEngineResource):
         self.throttle_check(request)
 
         if 'plugin_name' in kwargs:
-            methods = PluginManagerSingleton.get().methodListPlugin(plugin_name = kwargs['plugin_name'])
+            methods = PluginManager.getPluginMethods(plugin_name = kwargs['plugin_name'])
         else:
-            methods = PluginManagerSingleton.get().methodListPlugin()
+            methods = PluginManager.getPluginMethods()
         self.log_throttled_access(request)
         return self.create_response(request, methods, HttpAccepted)
-
-
-class EmbeddedDescriptionResource(resources.MongoEngineResource):
-    class Meta:
-        object_class = Description
-        allowed_methods = ('get')
-        authorization = authorization.Authorization()
 
 class IntentResource(resources.MongoEngineResource):
     plugin = fields.ReferenceField(to='lisa.server.web.manageplugins.api.PluginResource', attribute='plugin', null=True)

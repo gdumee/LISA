@@ -93,7 +93,7 @@
             var JsonData = jQuery.parseJSON(e.data);
             if(JsonData.hasOwnProperty("message"))
             {
-                $('#chat').append('<li class="lisa"><strong>Lisa</strong> > '+JsonData.message+'</li>');
+                $('#chat').prepend('<li class="lisa"><strong>Lisa</strong> > '+JsonData.message+'</li>');
                 readme(JsonData.message);
             }
         }
@@ -103,7 +103,7 @@
         event.preventDefault(); // Prevent page reload
 
         var msg = document.getElementById('message').value;
-        $('#chat').append('<li class="me"><strong>Me</strong> > '+msg+'</li>');
+        $('#chat').prepend('<li class="me"><strong>Me</strong> > '+msg+'</li>');
         sock.send(msg);
 
         $('#message').onwebkitspeechchange = function(e) {
@@ -120,20 +120,26 @@
 {% endblock %}
 
 {% block content %}
-<div class=span12>
-    <form id="actionForm" onsubmit="send()">
-        <p>
-            Message:
-            <input id="message" type="text" value="" lang="fr-FR"  x-webkit-speech  speech  onwebkitspeechchange="send();">
-        </p>
-        <Input type="submit" id="sendit" value="Send Message">
-    </form>
-</div>
-<div class=span10>
-    <canvas id='canvas1'>
-    </canvas>
-</div>
-<div style="height: 400px; width: 600px;overflow:auto;">
+<table>
+    <tr>
+        <td>
+            <form id="actionForm" onsubmit="send()">
+                <p>
+                    Message:
+                    <input id="message" type="text" value="" lang="fr-FR"  x-webkit-speech  speech  onwebkitspeechchange="send();">
+                </p>
+                <Input type="submit" id="sendit" value="Send Message">
+            </form>
+        </td>
+        <td>
+            <div class=span10>
+                <canvas id='canvas1'>
+                </canvas>
+            </div>
+        </td>
+    </tr>
+</table>
+<div id="div_chat" style="height: 500px; overflow:auto;">
     <ul id="chat">
     </ul>
 </div>

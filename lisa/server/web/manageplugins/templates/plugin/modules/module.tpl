@@ -1,22 +1,40 @@
 # -*- coding: UTF-8 -*-
+#-----------------------------------------------------------------------------
+# project     : Lisa plugins
+# module      : {{ plugin_name }}
+# file        : {{ plugin_name_lower }}.py
+# description : TODO
+# author      : G. Dumee, G. Audet
+#-----------------------------------------------------------------------------
+# copyright   : Neotique
+#-----------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------
+# Imports
+#-----------------------------------------------------------------------------
+import os, inspect
 from lisa.server.plugins.IPlugin import IPlugin
-import gettext
-import inspect
-import os
 
+
+#-----------------------------------------------------------------------------
+# {{ plugin_name }}
+#-----------------------------------------------------------------------------
 class {{ plugin_name }}(IPlugin):
+    #-----------------------------------------------------------------------------
     def __init__(self):
-        super({{ plugin_name }}, self).__init__()
-        self.configuration_plugin = self.mongo.lisa.plugins.find_one({"name": "{{ plugin_name }}"})
-        self.path = os.path.realpath(os.path.abspath(os.path.join(os.path.split(
-            inspect.getfile(inspect.currentframe()))[0],os.path.normpath("../lang/"))))
-        self._ = translation = gettext.translation(domain='{{ plugin_name_lower }}',
-                                                   localedir=self.path,
-                                                   fallback=True,
-                                                   languages=[self.configuration_server['lang']]).ugettext
+        super({{ plugin_name }}, self).__init__(plugin_name = {{ plugin_name }})
 
+    #-----------------------------------------------------------------------------
     def sayHello(self, jsonInput):
-        return {"plugin": "{{ plugin_name }}",
-                "method": "sayHello",
-                "body": self._('Hello. How are you ?')
-        }
+        # Get context
+        context = jsonInput['context']
+
+        # Create message
+        message = self._("multiple_trans").format(param = "test de plugin")
+
+        # Return result to client
+        self.speakToClient(context = jsonInput['context'], text = message)
+
+# --------------------- End of {{ plugin_name_lower }}.py  ---------------------
+

@@ -13,9 +13,6 @@ msgstr  "Project-Id-Version: LISA 1.0\n"
 msgid "Error : Invalid JSON"
 msgstr  "Erreur : JSON invalide"
 
-msgid "intents_list"
-msgstr  "Je peux {intentslist}"
-
 msgid "Error : Unknwon input type {type}"
 msgstr  "Erreur : type inconnu en entrée : {type}"
 
@@ -24,3 +21,35 @@ msgstr  "Erreur : aucun type dans le JSON d'entrée"
 
 msgid "Error : Unknwon command type {command}"
 msgstr  "Erreur : commande inconnue en entrée : {command}"
+
+msgid "error_intent_unknown"
+msgstr  "(10, \"Je n'ai pas cette fonctionnalité\"),"
+        "(10, \"Votre demande ne fait pas partie de mes fonctions\"),"
+        "(10, \"Un jour j'en serais peut-être capable\"),"
+        "(10, \"Cette tâche est bien trop complexe pour moi\"),"
+        "(10, \"Je ne sais pas encore répondre à cette demande\"),"
+
+msgid "error_intent_low_confidence"
+msgstr  "(10, \"Je suis désolé, je ne sais pas répondre à votre demande\"),"
+        "(10, \"Je m'excuse, je ne sais pas répondre à votre demande\"),"
+        "(10, \"Veuillez m'excuser, votre demande ne fais pas partie de mes fonctions\"),"
+        "(10, \"Je suis désolé, je ne comprends pas votre demande\"),"
+        "(10, \"Je suis désolé, je ne vois pas de quoi vous voulez parler\"),"
+
+msgid "error_plugin_init"
+msgstr  "(10, \"Je n'ai pas résussi à activer cette fonction\"),"
+        "(10, \"J'ai rencontré un erreur en activant cette fonction\"),"
+
+msgid "error_plugin_no_func"
+msgstr  "(10, \"Désolé, Je n'ai pas cette encore fonctionnalité\"),"
+        "(10, \"Je m'excuse, il semble que je n'ai pas été mise à jour pour avoir cette fonction\"),"
+
+msgid "error_plugin_exec"
+msgstr  "(10, \"Je suis désolé, une erreur m'empêche de répondre à votre demande\"),"
+        "(10, \"Désolé, j'ai rencontré une erreur en exécutant cette fonction\"),"
+
+msgid "core_intent_no_plugin"
+msgstr  "Vous n'avez pas précisé de fonction"
+
+msgid "i_can_do_many"
+msgstr  "Je sais faire beaucoup de chose, voici des exemples"

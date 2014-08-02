@@ -1,0 +1,35 @@
+#-----------------------------------------------------------------------------
+# copyright   : Neotique
+#-----------------------------------------------------------------------------
+msgid ""
+msgstr  "Last-Translator: {{ author_name }} <{{ author_email }}>\n"
+        "Language-Team: Neotique>\n"
+        "Language: fr\n"
+        "MIME-Version: 1.0\n"
+        "Content-Type: text/plain; charset=UTF-8\n"
+        "Content-Transfer-Encoding: 8bit\n"
+
+
+#-----------------------------------------------------------------------------
+# Plugin description
+#-----------------------------------------------------------------------------
+msgid "i_can_plugin"
+msgstr  "(10, \"Je peux gérer votre frigo\"),"
+        "(10, \"Je peux controler votre réfrigérateur\"),"
+
+msgid "i_can_say_hello"
+msgstr  "(10, \"Première phrase\"),"
+        "(10, \"Seconde phrase\"),"
+
+msgid "multiple_trans"
+msgstr  "(10, \"Première phrase {param}\"),"
+        "(10, \"{param} Seconde phrase\"),"
+
+
+#-----------------------------------------------------------------------------
+# Plugin strings
+#-----------------------------------------------------------------------------
+msgid "hello"
+msgstr  "Phrase simple"
+
+# --------------------- End of {{ plugin_name_lower }}.po  ---------------------

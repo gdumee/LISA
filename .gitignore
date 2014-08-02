@@ -40,4 +40,5 @@ twisted/plugins/dropin.cache
 
 *~
 *.pot
+*.mo
 *.pem

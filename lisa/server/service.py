@@ -13,17 +13,16 @@
 #-----------------------------------------------------------------------------
 # Imports
 #-----------------------------------------------------------------------------
-import os
+import os, glob
+from OpenSSL import SSL
 from twisted.internet import reactor, ssl
 from twisted.application import internet, service
 from twisted.web import server, wsgi, static
 from twisted.python import threadpool, log
 from autobahn.twisted.websocket import WebSocketServerFactory
 from autobahn.twisted.resource import WebSocketResource
-from OpenSSL import SSL
-from lisa.server.config_manager import ConfigManager
 from subprocess import call
-import glob
+from lisa.server.config_manager import ConfigManager
 
 
 #-----------------------------------------------------------------------------
@@ -54,10 +53,10 @@ class ThreadPoolService(service.Service):
 #-----------------------------------------------------------------------------
 def ClientAuthVerifyCallback(connection, x509, errnum, errdepth, ok):
     if not ok:
-        print 'Invalid client certificat :', x509.get_subject()
+        log.err('Invalid client certificat :', x509.get_subject())
         return False
 
-    print "Client certificat is OK"
+    log.msg("Client certificat is OK")
     return ok
 
 
@@ -85,9 +84,7 @@ def makeService(config):
     pool = threadpool.ThreadPool()
     tps = ThreadPoolService(pool)
     tps.setServiceParent(multi)
-
     libs.scheduler.setServiceParent(multi)
-    libs.Initialize()
 
     # Creating the web stuff
     resource_wsgi = wsgi.WSGIResource(reactor, tps.pool, WSGIHandler())
@@ -114,7 +111,7 @@ def makeService(config):
         ctx.load_verify_locations(outfile)
 
         # Initialize client factory
-        engineService = internet.SSLServer(configuration['lisa_port'], libs.ClientFactorySingleton.get(), clientAuthContextFactory)
+        engineService = internet.SSLServer(configuration['lisa_port'], libs.ClientFactory.get(), clientAuthContextFactory)
 
         # Create a SSL context factory for web interface
         webAuthContextFactory = ssl.DefaultOpenSSLContextFactory(configuration['lisa_ssl_key'], configuration['lisa_ssl_crt'])
@@ -123,7 +120,7 @@ def makeService(config):
         webService = internet.SSLServer(configuration['lisa_web_port'], server.Site(root), webAuthContextFactory)
     else:
         # Initialize factories
-        engineService = internet.TCPServer(configuration['lisa_port'], libs.ClientFactorySingleton.get())
+        engineService = internet.TCPServer(configuration['lisa_port'], libs.ClientFactory.get())
         webService = internet.TCPServer(configuration['lisa_web_port'], server.Site(root))
 
     # Create the websocket factory

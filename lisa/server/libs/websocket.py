@@ -13,17 +13,14 @@
 #-----------------------------------------------------------------------------
 # Imports
 #-----------------------------------------------------------------------------
+import os, json
 from twisted.python import log
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.protocols.basic import LineReceiver
 from OpenSSL import SSL
-import os
-import json
 from twisted.internet import reactor, ssl
 from autobahn.twisted.websocket import WebSocketServerProtocol
-import gettext
 from lisa.server.config_manager import ConfigManager
-from lisa.Neotique.NeoTrans import NeoTrans
 
 
 #-----------------------------------------------------------------------------
@@ -57,15 +54,9 @@ class WebSocketProtocol(WebSocketServerProtocol):
         else:
             self.conn = reactor.connectTCP(configuration['lisa_url'], configuration['lisa_port'], self.LisaProtocolfactory)
 
-        self.logged = False
-
     def onMessage(self, msg, binary):
-        if self.logged == False:
-            self.LisaProtocolfactory.protocol.sendMessage(json.dumps(
-                {"from": "Lisa-Web", "zone": "Lisa-Web", "type": "command", "command": "login req"}))
-            self.logged = True
         self.LisaProtocolfactory.protocol.sendMessage(json.dumps(
-            {"from": "Lisa-Web","type": "chat", "body": unicode(msg.decode('utf-8')), "zone": "WebSocket"}))
+            {"from": "Lisa-Web","type": "chat", "body": unicode(msg.decode('utf-8')), "zone": "Web"}))
 
     def connectionLost(self, reason):
         self.conn.transport = None
@@ -84,7 +75,7 @@ class ServerTLSContext(ssl.ClientContextFactory):
 # LisaProtocol
 #-----------------------------------------------------------------------------
 class LisaProtocol(LineReceiver):
-    def __init__(self, WebSocketProtocol,factory):
+    def __init__(self, WebSocketProtocol, factory):
         self.WebSocketProtocol = WebSocketProtocol
         self.factory = factory
 
@@ -99,6 +90,8 @@ class LisaProtocol(LineReceiver):
             ctx = ServerTLSContext()
             self.transport.startTLS(ctx, self.factory)
 
+        self.sendMessage(json.dumps({"from": "Lisa-Web", "zone": "Web", "type": "command", "command": "login req"}))
+
 
 #-----------------------------------------------------------------------------
 # LisaProtocolFactory
@@ -108,21 +101,21 @@ class LisaProtocolFactory(ReconnectingClientFactory):
         self.WebSocketProtocol = WebSocketProtocol
 
     def startedConnecting(self, connector):
-        log.msg('Started to connect.')
+        log.msg('Start connection')
 
     def buildProtocol(self, addr):
         self.protocol = LisaProtocol(self.WebSocketProtocol, factory=self)
-        log.msg('Connected to Lisa.')
-        log.msg('Resetting reconnection delay')
+        log.msg('Connected to server')
         self.resetDelay()
         return self.protocol
 
     def clientConnectionLost(self, connector, reason):
-        log.err("Lost connection.  Reason : {reason}".format(reason = str(reason)))
+        log.err("Lost connection with server.  Reason : {reason}".format(reason = str(reason)))
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
     def clientConnectionFailed(self, connector, reason):
-        log.err("Connection failed. Reason : {reason}".format(reason = str(reason)))
+        log.err("Connection failed with server. Reason : {reason}".format(reason = str(reason)))
+        self.resetDelay()
         ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
 # --------------------- End of websockets.py  ---------------------

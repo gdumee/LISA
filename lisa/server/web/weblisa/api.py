@@ -2,7 +2,7 @@ from twisted.python import log
 from tastypie import authorization
 from django.conf.urls import *
 import json, os
-from lisa.server.libs import ClientFactorySingleton, LisaProtocolSingleton
+from lisa.server.libs import ClientFactory
 from tastypie import resources as tastyresources
 from tastypie_mongoengine import resources as mongoresources
 from tastypie.utils import trailing_slash
@@ -129,13 +129,11 @@ class LisaResource(tastyresources.Resource):
         else:
             message = request.GET.get("message")
             clients_zone = request.GET.getlist("clients_zone")
-        jsondata = json.dumps({
-                                      'body': message,
-                                      'clients_zone': clients_zone,
-                                      'from': "API",
-                                      'type': "chat"
-            })
-        LisaProtocolSingleton.get().answerToClient(jsondata=jsondata)
+        jsondata = {'message': message, 'type': "chat"}
+        zone_uids = []
+        for z in clients_zone:
+            zone_uids.append(ClientFactory.getOrCreateZone(z))
+        ClientFactory.sendToClients(jsondata = jsondata, zone_uids = zone_uids)
 
         self.log_throttled_access(request)
         return self.create_response(request, { 'status': 'success', 'log': "Message sent"}, HttpAccepted)
@@ -228,7 +226,7 @@ class LisaResource(tastyresources.Resource):
         from tastypie.http import HttpAccepted, HttpNotModified
 
         try:
-            ClientFactorySingleton.get().LisaReload()
+            ClientFactory.LisaReload()
         except:
             log.err()
             return self.create_response(request, { 'status' : 'failure' }, HttpNotModified)
@@ -259,7 +257,7 @@ class LisaResource(tastyresources.Resource):
         from tastypie.http import HttpAccepted, HttpNotModified
 
         try:
-            ClientFactorySingleton.get().SchedReload()
+            ClientFactory.SchedReload()
         except:
             log.err()
             return self.create_response(request, { 'status' : 'failure' }, HttpNotModified)

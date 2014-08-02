@@ -26,6 +26,7 @@ from lisa.Neotique.NeoTrans import NeoTrans
 #-----------------------------------------------------------------------------
 class ConfigManager(object):
     """
+    Manage configuration
     """
     # Singleton
     __instance = None
@@ -50,6 +51,46 @@ class ConfigManager(object):
         if self.configuration.has_key('lang') == False:
             self.configuration['lang'] = "fr-FR"
         self.configuration['lang_short'] = self.configuration['lang'].split('-')[0]
+
+        # Debugs
+        if self.configuration.has_key('debug') == False:
+            self.configuration['debug'] = {}
+        if self.configuration['debug'].has_key('debug_input') == True and self.configuration['debug']['debug_input'] == True:
+            self.configuration['debug']['debug_input'] = True
+        else:
+            self.configuration['debug']['debug_input'] = False
+        if self.configuration['debug'].has_key('debug_output') == True and self.configuration['debug']['debug_output'] == True:
+            self.configuration['debug']['debug_output'] = True
+        else:
+            self.configuration['debug']['debug_output'] = False
+        if self.configuration['debug'].has_key('debug_scheduler') == True and self.configuration['debug']['debug_scheduler'] == True:
+            self.configuration['debug']['debug_scheduler'] = True
+        else:
+            self.configuration['debug']['debug_scheduler'] = False
+        if self.configuration['debug'].has_key('debug_plugin') == True and self.configuration['debug']['debug_plugin'] == True:
+            self.configuration['debug']['debug_plugin'] = True
+        else:
+            self.configuration['debug']['debug_plugin'] = False
+        if self.configuration['debug'].has_key('debug_wit') == True and self.configuration['debug']['debug_wit'] == True:
+            self.configuration['debug']['debug_wit'] = True
+        else:
+            self.configuration['debug']['debug_wit'] = False
+        if self.configuration['debug'].has_key('debug_before_before_rule') == True and self.configuration['debug']['debug_before_before_rule'] == True:
+            self.configuration['debug']['debug_before_before_rule'] = True
+        else:
+            self.configuration['debug']['debug_before_before_rule'] = False
+        if self.configuration['debug'].has_key('debug_after_before_rule') == True and self.configuration['debug']['debug_after_before_rule'] == True:
+            self.configuration['debug']['debug_after_before_rule'] = True
+        else:
+            self.configuration['debug']['debug_after_before_rule'] = False
+        if self.configuration['debug'].has_key('debug_before_after_rule') == True and self.configuration['debug']['debug_before_after_rule'] == True:
+            self.configuration['debug']['debug_before_after_rule'] = True
+        else:
+            self.configuration['debug']['debug_before_after_rule'] = False
+        if self.configuration['debug'].has_key('debug_after_after_rule') == True and self.configuration['debug']['debug_after_after_rule'] == True:
+            self.configuration['debug']['debug_after_after_rule'] = True
+        else:
+            self.configuration['debug']['debug_after_after_rule'] = False
 
         # Server params
         if self.configuration.has_key('lisa_web_port') == False:
@@ -88,18 +129,18 @@ class ConfigManager(object):
         self.configuration['trans'] = NeoTrans(domain = 'lisa', localedir = lang_path, languages = [self.configuration['lang_short']]).Trans
 
     #-----------------------------------------------------------------------------
-    def _getConfiguration(self):
-        if ConfigManager.__instance is None:
-            ConfigManager.__instance = ConfigManager()
-        return ConfigManager.__instance.configuration
-    getConfiguration = classmethod(_getConfiguration)
+    @classmethod
+    def getConfiguration(cls):
+        if cls.__instance is None:
+            cls.__instance = ConfigManager()
+        return cls.__instance.configuration
 
     #-----------------------------------------------------------------------------
-    def _setConfiguration(self, config_file):
-        ConfigManager.__instance = None
-        ConfigManager.__instance = ConfigManager(config_file)
-        return ConfigManager.__instance.valid_flag
-    setConfiguration = classmethod(_setConfiguration)
+    @classmethod
+    def setConfiguration(cls, config_file):
+        cls.__instance = None
+        cls.__instance = ConfigManager(config_file)
+        return cls.__instance.valid_flag
 
 
 # --------------------- End of config_manager.py  ---------------------
