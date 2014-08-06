@@ -3,8 +3,8 @@
 {% block title %}{{ section.title }}{% endblock %}
 {% block javascript %}
 <script type="text/javascript">
-        var url = '/api/v1/lisa/tts/google/';
-        //var url = '/api/v1/lisa/tts/pico/';
+        //var url = '/api/v1/lisa/tts/google/';
+        var url = '/api/v1/lisa/tts/pico/';
         var source;
         var context = new webkitAudioContext();
         var analyser = context.createAnalyser();
@@ -19,7 +19,9 @@
             analyser.connect(context.destination);
             source.onended = function() {
                 isFinished = true;
+                cancelAnimationFrame(globalID);
             }
+            globalID = requestAnimationFrame(draw);
             source.start(0);
         }
 
@@ -38,12 +40,13 @@
             request.send(data);
         }
 
+        var globalAnimID;
         function draw() {
-            window.webkitRequestAnimationFrame(draw);
             render();
+            globalID = requestAnimationFrame(draw);
         }
         var separator=2;
-        var height=canvas.height=100;
+        var height=canvas.height=90;
         var width=canvas.width=200;
         var spacer=2;
 
@@ -70,42 +73,46 @@
     var wsuri = "{{ websocket }}://"+$(location).attr('host')+"/websocket";
 
     window.onload = function() {
+        connect_to_server()
+    };
 
+    function connect_to_server() {
         sock = new WebSocket(wsuri);
 
         sock.onopen = function() {
-            console.log("connected to " + wsuri);
+            console.log("Web : connected to " + wsuri);
         }
 
         sock.onclose = function(e) {
-            console.log("connection closed (" + e.code + ")");
+            console.log("Web : connection closed (" + e.code + ")");
+            setTimeout(function(){connect_to_server()}, 2000);
         }
 
         sock.onmessage = function(e) {
-            console.log("message received: " + e.data);
+            console.log("Web : message received: " + e.data);
             var JsonData = jQuery.parseJSON(e.data);
             if(JsonData.hasOwnProperty("message"))
             {
-                $('#chat').append('<li class="lisa"><strong>Lisa</strong> > '+JsonData.message+'</li>');
+                $('#chat').prepend('<li class="lisa"><strong>Lisa</strong> > '+JsonData.message+'</li>');
                 readme(JsonData.message);
             }
-            draw();
         }
     };
 
     function send() {
+        event.preventDefault(); // Prevent page reload
+
         var msg = document.getElementById('message').value;
-        $('#chat').append('<li class="me"><strong>Me</strong> > '+msg+'</li>');
+        $('#chat').prepend('<li class="me"><strong>Me</strong> > '+msg+'</li>');
         sock.send(msg);
 
         $('#message').onwebkitspeechchange = function(e) {
-            console.log(e); // SpeechInputEvent
+            console.log("Web : " + e); // SpeechInputEvent
             document.getElementById('sendit').send();
 
         }
 
-        event.preventDefault(); // Prevent page reload
-        $('#message').val(''); // Clear field
+        $('#message').val(''); // Clear input field
     };
 
 </script>
@@ -113,20 +120,27 @@
 {% endblock %}
 
 {% block content %}
-<div class=span12>
-    <div style="height: 200px; width: 600px;overflow:auto;">
-        <ul id="chat">
-        </ul>
-    </div>
-    <form id="actionForm" onsubmit="send()">
-        <p>
-            Message:
-            <input id="message" type="text" value="" lang="fr-FR"  x-webkit-speech  speech  onwebkitspeechchange="send();">
-        </p>
-        <Input type="submit" id="sendit" value="Send Message">
-    </form>
-<div class=span10>
-    <canvas id='canvas1'>
-    </canvas>
+<table>
+    <tr>
+        <td>
+            <form id="actionForm" onsubmit="send()">
+                <p>
+                    Message:
+                    <input id="message" type="text" value="" lang="fr-FR"  x-webkit-speech  speech  onwebkitspeechchange="send();">
+                </p>
+                <Input type="submit" id="sendit" value="Send Message">
+            </form>
+        </td>
+        <td>
+            <div class=span10>
+                <canvas id='canvas1'>
+                </canvas>
+            </div>
+        </td>
+    </tr>
+</table>
+<div id="div_chat" style="height: 500px; overflow:auto;">
+    <ul id="chat">
+    </ul>
 </div>
 {% endblock %}

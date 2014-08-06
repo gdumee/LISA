@@ -1,15 +1,15 @@
 from django.core.management.base import BaseCommand, CommandError
-from lisa.server.web.manageplugins.models import Plugin, Rule, Cron
+from lisa.server.web.manageplugins.models import Plugin, Cron, Intent
 from optparse import make_option
 import os, json
 import requests
-from lisa.server.plugins.PluginManager import PluginManagerSingleton
+from lisa.server.plugins.PluginManager import PluginManager
 from django.utils import six
 import lisa.plugins
 
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
+configuration = ConfigManager.getConfiguration()
 
 class Command(BaseCommand):
     def __init__(self):
@@ -123,15 +123,15 @@ class Command(BaseCommand):
 
     def manage(self, name, action, author_email=None, author_name=None, dev_mode=False):
         if action == "install":
-            status = PluginManagerSingleton.get().installPlugin(plugin_name=name, dev_mode=dev_mode)
+            status = PluginManager.installPlugin(plugin_name=name, dev_mode=dev_mode)
         elif action == "disable":
-            status = PluginManagerSingleton.get().disablePlugin(plugin_name=name)
+            status = PluginManager.disablePlugin(plugin_name=name)
         elif action == "uninstall":
-            status = PluginManagerSingleton.get().uninstallPlugin(plugin_name=name, dev_mode=dev_mode)
+            status = PluginManager.uninstallPlugin(plugin_name=name, dev_mode=dev_mode)
         elif action == "enable":
-            status = PluginManagerSingleton.get().enablePlugin(plugin_name=name)
+            status = PluginManager.enablePlugin(plugin_name=name)
         elif action == "create":
-            status = PluginManagerSingleton.get().createPlugin(plugin_name=name, author_name=author_name, author_email=author_email)
+            status = PluginManager.createPlugin(plugin_name=name, author_name=author_name, author_email=author_email)
         else:
             exit()
         if status['status'] == 'success':

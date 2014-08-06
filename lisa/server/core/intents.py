@@ -1,40 +1,119 @@
 # -*- coding: UTF-8 -*-
+#-----------------------------------------------------------------------------
+# project     : Lisa server
+# module      : Core plugin
+# file        : intents.py
+# description : Return server abilities
+# author      : G.Dumée
+#-----------------------------------------------------------------------------
+# copyright   : Neotique
+#-----------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------
+# Imports
+#-----------------------------------------------------------------------------
 import json, os
-from pymongo import MongoClient
-from wit import Wit
+from random import random
+from lisa.server.plugins.IPlugin import IPlugin
 from lisa.server.web.manageplugins.models import Intent as oIntents
-import gettext
-import lisa.server
+from lisa.server.config_manager import ConfigManager
+from lisa.server.plugins.PluginManager import PluginManager
+from lisa.Neotique.NeoConv import NeoConv
 
-from lisa.server.ConfigManager import ConfigManagerSingleton
-from lisa.Neotique.NeoTrans import NeoTrans
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
-path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
-_ = NeoTrans(domain='lisa', localedir=path, fallback=True,
-                                              languages=[configuration['lang']]).Trans
+#-----------------------------------------------------------------------------
+# Intents
+#-----------------------------------------------------------------------------
+class Intents(IPlugin):
+    #-----------------------------------------------------------------------------
+    def __init__(self):
+        super(Intents, self).__init__()
+        configuration_server = ConfigManager.getConfiguration()
+        self._ = configuration_server['trans']
 
-class Intents:
-    def __init__(self, lisa=None):
-        self.lisa = lisa
-        self.configuration = configuration
-        mongo = MongoClient(host=self.configuration['database']['server'],
-                            port=self.configuration['database']['port'])
-        self.database = mongo.lisa
-        self.wit = Wit(self.configuration['wit_token'])
+    #-----------------------------------------------------------------------------
+    def list_plugins(self, jsonInput):
+        # Get context
+        context = jsonInput['context']
 
-    def list(self, jsonInput):
-        intentstr = []
-        listintents = self.wit.get_intents()
-        for oIntent in oIntents.objects(enabled=True):
-            for witintent in listintents:
-                print witintent
-                if witintent["name"] == oIntent.name and 'metadata' in witintent:
-                    if witintent['metadata']:
-                        metadata = json.loads(witintent['metadata'])
-                        intentstr.append(metadata['tts'])
+        # Parse plugins that has i_can strings
+        desc_list = []
+        for plugin in PluginManager.getEnabledPlugins():
+            if hasattr(plugin, 'i_can') == True and plugin.i_can is not None:
+                # Get translation method from plugin
+                instance = PluginManager.getPluginInstance(plugin.name)
 
-        return {"plugin": "Intents",
-                "method": "list",
-                "body": _("intents_list").format(intentslist = ', '.join(intentstr))
-        }
+                # Translate intent description
+                desc_list.append(instance._(plugin.i_can))
+
+        # When there is too much sentences
+        message = ""
+        if len(desc_list) > 4:
+            message = self._("i_can_do_many") + ". "
+
+        # Get 4 sentences randomly
+        for i in range(4):
+            if len(desc_list) == 0:
+                break;
+
+            val = int(random() * len(desc_list))
+            message += desc_list[val] + ". "
+            desc_list.pop(val)
+
+        # Speak to client
+        self.speakToClient(text = message, context = context)
+
+    #-----------------------------------------------------------------------------
+    def list_plugin_intents(self, jsonInput):
+        # Get context
+        context = jsonInput['context']
+
+        # Get plugin name
+        plugin_name = None
+        try:
+            plugin_name = jsonInput['outcome']['entities']['plugin_name']['value']
+        except:
+            pass
+
+        # Parse intents that has i_can strings
+        desc_list = []
+        for intent in PluginManager.getEnabledIntents():
+            if NeoConv.compareSimilar(intent.plugin_name, plugin_name) == False:
+                continue
+
+            if hasattr(intent, 'i_can') == True and intent.i_can is not None:
+                # Get translation method from plugin
+                instance = PluginManager.getPluginInstance(intent.plugin_name)
+
+                # Translate intent description
+                desc_list.append(instance._(intent.i_can))
+
+        # If no plugin given
+        if len(desc_list) == 0:
+            # No plugin
+            message = self._("core_intent_no_plugin")
+
+            # Speak to client
+            self.speakToClient(text = message, context = context)
+
+            return
+
+        # When there is too much sentences
+        message = ""
+        if len(desc_list) > 4:
+            message = self._("i_can_do_many") + ". "
+
+        # Get 4 sentences randomly
+        for i in range(4):
+            if len(desc_list) == 0:
+                break;
+
+            val = int(random() * len(desc_list))
+            message += desc_list[val] + ". "
+            desc_list.pop(val)
+
+        # Speak to client
+        self.speakToClient(text = message, context = context)
+
+# --------------------- End of intents.py  ---------------------

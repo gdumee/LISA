@@ -1,9 +1,9 @@
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from lisa.server.ConfigManager import ConfigManagerSingleton
+from lisa.server.config_manager import ConfigManager
 
-configuration = ConfigManagerSingleton.get().getConfiguration()
+configuration = ConfigManager.getConfiguration()
 
 from pkg_resources import get_distribution
 
@@ -15,7 +15,7 @@ def index(request):
         websocket = 'ws'
     context = {
         'websocket': websocket,
-        'lang': configuration['lang'],
+        'lang': configuration['lang_short'],
         'server_version': get_distribution('lisa-server').version
     }
     return render(request, 'googlespeech/index.html', context)

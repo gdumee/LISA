@@ -9,13 +9,3 @@ class Root(resource.Resource):
         path0 = request.prepath.pop(0)
         request.postpath.insert(0, path0)
         return self.wsgi_resource
-
-
-def verifyCallback(connection, x509, errnum, errdepth, ok):
-    if not ok:
-        print 'invalid cert from subject:', x509.get_subject()
-        return False
-    else:
-        print "Certs are OK"
-    return True
-

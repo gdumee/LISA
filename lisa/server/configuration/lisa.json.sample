@@ -1,10 +1,14 @@
 {
-    "lang": "fr",
+    "lang": "fr-FR",
+
     "lisa_url": "localhost",
-    "lisa_engine_port": 10042,
-    "lisa_engine_port_ssl": 10043,
+    "lisa_port": 10042,
     "lisa_web_port": 8000,
-    "lisa_web_port_ssl": 8443,
+
+    "enable_secure_mode": true,
+    "lisa_ssl_crt2": "",
+    "lisa_ssl_key2": "",
+
     "database": {
         "server": "localhost",
         "port": 27017,
@@ -21,11 +25,10 @@
         "debug_before_after_rule": false,
         "debug_after_after_rule": false
     },
-    "enable_secure_mode": false,
-    "enable_unsecure_mode": true,
-    "wit_url": "https://api.wit.ai/",
-    "wit_token": "ATSHFOROYVUWQ3HTYBGHJNNYAXD7NTBC",
-    "wit_confidence": 0.800,
-    "bot_name": "lisa",
+
+    "wit_token": "Z45ZDBO54WA2OBL3N4USAYGF5FMHVCCL",
+    "wit_confidence": 0.600,
+
+    "bot_name": "neo",
     "plugin_store": "http://plugins.lisa-project.net/"
 }

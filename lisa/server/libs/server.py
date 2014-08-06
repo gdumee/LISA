@@ -1,30 +1,46 @@
 # -*- coding: UTF-8 -*-
+#-----------------------------------------------------------------------------
+# project     : Lisa server
+# module      : server
+# file        : server.py
+# description : Lisa server protocol management
+# author      : G.Dumee
+#-----------------------------------------------------------------------------
+# copyright   : Neotique
+#-----------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------
+# Imports
+#-----------------------------------------------------------------------------
 import os, json, sys, uuid, threading
 from twisted.internet.protocol import Factory
 from twisted.protocols.basic import LineReceiver
-from twisted.internet import ssl
 from twisted.python import log
+from twisted.internet import ssl
 from OpenSSL import SSL
 from lisa.server.libs.txscheduler.manager import ScheduledTaskManager
 from lisa.server.libs.txscheduler.service import ScheduledTaskService
-from lisa.server.plugins.PluginManager import PluginManagerSingleton
-import gettext
-from lisa.server.ConfigManager import ConfigManagerSingleton
-from lisa.server.web.manageplugins.models import Intent, Rule
-from lisa.Neotique.NeoDialog import NeoDialog
-from lisa.Neotique.NeoTrans import NeoTrans
+from lisa.server.plugins.PluginManager import PluginManager
+from lisa.server.config_manager import ConfigManager
+from NeoDialog import NeoContext
+from wit import Wit
 
-# Create a task manager to pass it to other services
 
-configuration_server = ConfigManagerSingleton.get().getConfiguration()
-dir_path = ConfigManagerSingleton.get().getPath()
-path = '/'.join([ConfigManagerSingleton.get().getPath(), 'lang'])
-_ = NeoTrans(domain = 'lisa', localedir = path, fallback = True, languages=[configuration_server['lang']]).Trans
+#-----------------------------------------------------------------------------
+# Globals
+#-----------------------------------------------------------------------------
+configuration = ConfigManager.getConfiguration()
+_ = configuration['trans']
 
-taskman = ScheduledTaskManager(configuration_server)
+#TODO what is that
+taskman = ScheduledTaskManager(configuration)
 scheduler = ScheduledTaskService(taskman)
 
 
+#-----------------------------------------------------------------------------
+# ServerTLSContext
+#-----------------------------------------------------------------------------
 class ServerTLSContext(ssl.DefaultOpenSSLContextFactory):
     def __init__(self, *args, **kw):
         kw['sslmethod'] = SSL.TLSv1_METHOD
@@ -35,10 +51,13 @@ class ServerTLSContext(ssl.DefaultOpenSSLContextFactory):
 # LisaProtocol : built by factory on every client connection
 #-----------------------------------------------------------------------------
 class LisaProtocol(LineReceiver):
+    """
+    TCP server/client Protocol
+    """
+
     #-----------------------------------------------------------------------------
-    def __init__(self, factory):
+    def __init__(self):
         self.uid = str(uuid.uuid1())
-        self.factory = factory
         self.client = None
 
     #-----------------------------------------------------------------------------
@@ -46,13 +65,12 @@ class LisaProtocol(LineReceiver):
         log.msg("New connection from a client")
 
         # TLS connection
-        if configuration_server['enable_secure_mode']:
+        if configuration['enable_secure_mode']:
             ctx = ServerTLSContext(
-                privateKeyFileName=os.path.normpath(dir_path + '/' + 'configuration/ssl/server.key'),
-                certificateFileName= os.path.normpath(dir_path + '/' + 'configuration/ssl/server.crt')
+                privateKeyFileName = configuration['lisa_ssl_key'],
+                certificateFileName = configuration['lisa_ssl_crt']
             )
-            self.transport.startTLS(ctx, self.factory)
-            pass
+            self.transport.startTLS(ctx, ClientFactory.get())
 
     #-----------------------------------------------------------------------------
     def connectionLost(self, reason):
@@ -66,7 +84,7 @@ class LisaProtocol(LineReceiver):
     #-----------------------------------------------------------------------------
     def lineReceived(self, data):
         # Debug
-        if self.client is not None and configuration_server['debug']['debug_output']:
+        if self.client is not None and configuration['debug']['debug_output']:
             log.msg("INPUT from {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(data)))
 
         # Try to get Json
@@ -84,7 +102,7 @@ class LisaProtocol(LineReceiver):
 
         # Read type
         if self.client is not None and jsonData['type'] == "chat":
-            self.client['dialog'].parse(jsonData = jsonData)
+            ClientFactory.parseChat(jsonData = jsonData, client_uid = self.client['uid'])
         elif jsonData['type'] == "command" and jsonData.has_key('command') == True:
             # Select command
             if jsonData['command'].lower() == 'login req':
@@ -92,11 +110,11 @@ class LisaProtocol(LineReceiver):
                 self.initClient(client_name = jsonData['from'], zone_name = jsonData['zone'])
 
                 # Debug
-                if configuration_server['debug']['debug_output']:
+                if configuration['debug']['debug_output']:
                     log.msg("INPUT from {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(data)))
 
                 # Send login ack
-                jsonOut = {'type': 'command', 'command': 'login ack', 'bot_name': configuration_server['bot_name']}
+                jsonOut = {'type': 'command', 'command': 'login ack', 'bot_name': configuration['bot_name']}
                 self.sendToClient(jsonOut)
             else:
                 self.sendError(_("Error : Unknwon command type {command}").format(command = jsonData['command']))
@@ -106,7 +124,7 @@ class LisaProtocol(LineReceiver):
     #-----------------------------------------------------------------------------
     def initClient(self, client_name, zone_name):
         # Get client
-        self.client = self.factory.initClient(client_name = client_name, zone_name = zone_name)
+        self.client = ClientFactory.initClient(client_name = client_name, zone_name = zone_name)
         self.client['protocols'][self.uid] = {'object': self}
 
     #-----------------------------------------------------------------------------
@@ -127,7 +145,7 @@ class LisaProtocol(LineReceiver):
         jsonData['zone'] = self.client['zone']
 
         # Debug
-        if configuration_server['debug']['debug_output']:
+        if configuration['debug']['debug_output']:
             log.msg("OUTPUT to {name} in zone {zone} : {data}".format(name = self.client['name'], zone = self.client['zone'], data = str(jsonData)))
 
         # Send message
@@ -135,71 +153,64 @@ class LisaProtocol(LineReceiver):
 
 
 #-----------------------------------------------------------------------------
-# LisaProtocolSingleton (used for web interface connection)
+# Unique client factory : builds LisaProtocol for each connection
 #-----------------------------------------------------------------------------
-class LisaProtocolSingleton(object):
-    """
-    Singleton version of the Lisa Protocol.
-
-    Being a singleton, this class should not be initialised explicitly
-    and the ``get`` classmethod must be called instead.
-    """
+class ClientFactory(Factory):
+    # Singleton instance
     __instance = None
 
     #-----------------------------------------------------------------------------
     def __init__(self):
-        """
-        Initialisation: this class should not be initialised
-        explicitly and the ``get`` classmethod must be called instead.
-        """
-        if LisaProtocolSingleton.__instance is not None:
+        # Check Singleton
+        if ClientFactory.__instance is not None:
             raise Exception("Singleton can't be created twice !")
 
-    #-----------------------------------------------------------------------------
-    def get(self):
-        """
-        Actually create an instance
-        """
-        if LisaProtocolSingleton.__instance is None:
-            LisaProtocolSingleton.__instance = LisaFactorySingleton.get().buildProtocol(None)
-
-        return LisaProtocolSingleton.__instance
-    get = classmethod(get)
-
-
-#-----------------------------------------------------------------------------
-# Unique client factory : builds LisaProtocol for each connection
-#-----------------------------------------------------------------------------
-class ClientFactory(Factory):
-    __lock = threading.RLock()
-
-    #-----------------------------------------------------------------------------
-    def __init__(self):
+        # Variables init
         self.clients = {}
         self.zones = {}
-        self.syspath = sys.path
+        self._lock = threading.RLock()
+        self.wit = None
 
     #-----------------------------------------------------------------------------
-    def stopFactory(self):
-        # Clean clients
-        for c in self.clients:
-            self.clients[c].pop('dialog')
-            self.clients[c].pop('context')
+    def startFactory(self):
+        # Init global contexts
+        NeoContext.init(factory = self)
+
+        # Init Wit
+        self.wit = Wit(configuration['wit_token'])
 
     #-----------------------------------------------------------------------------
     def buildProtocol(self, addr):
         # Create protocol
-        return LisaProtocol(factory = self)
+        return LisaProtocol()
 
     #-----------------------------------------------------------------------------
-    def initClient(self, client_name, zone_name):
+    def stopFactory(self):
+        # Clean
+        if ClientFactory.__instance is not None:
+            ClientFactory.__instance.clients = {}
+            ClientFactory.__instance.zones = {}
+            ClientFactory.__instance.wit = None
+            ClientFactory.__instance = None
+
+        # Clear global contexts
+        NeoContext.deinit()
+
+    #-----------------------------------------------------------------------------
+    @classmethod
+    def initClient(cls, client_name, zone_name):
+        # Create singleton
+        if cls.__instance is None:
+            cls.__instance = ClientFactory()
+        self = cls.__instance
+
         # Lock access
-        self.__lock.acquire()
+        self._lock.acquire()
 
         # Get zone
-        zone_uid = self.getZone(zone_name)
+        zone_uid = cls.getOrCreateZone(zone_name)
 
-        # Search if we already had a connection
+        # Search if we already had a connection with this client
         client = None
         client_uid = None
         for c in self.clients:
@@ -213,8 +224,8 @@ class ClientFactory(Factory):
             self.clients[client_uid] = {'uid': client_uid, 'protocols': {}, 'name': client_name, 'zone': zone_name, 'zone_uid': zone_uid}
             client = self.clients[client_uid]
 
-            # Each client has its own dialog instance
-            client['dialog'] = NeoDialog(factory = self, client_uid = client_uid)
+            # Each client has its own context
+            client['context'] = NeoContext(client_uid = client_uid)
 
             # Add client to zone
             found_flag = False
@@ -226,21 +237,76 @@ class ClientFactory(Factory):
                 self.zones[zone_uid]['client_uids'].append(client['uid'])
 
         # Release access
-        self.__lock.release()
+        self._lock.release()
 
         return client
 
     #-----------------------------------------------------------------------------
-    def getZone(self, zone_name):
+    @classmethod
+    def parseChat(cls, jsonData, client_uid):
+        # Create singleton
+        if cls.__instance is None:
+            cls.__instance = ClientFactory()
+        self = cls.__instance
+
+        # If input has already a decoded intent
+        if jsonData.has_key("outcome") == True:
+            jsonInput = {}
+            jsonInput['outcome'] = jsonData['outcome']
+        elif len(jsonData['body']) > 0:
+            # Ask Wit for intent decoding
+            jsonInput = self.wit.get_message(unicode(jsonData['body']))
+        else:
+            # No input => no output
+            return
+
+        # Initialize output from input
+        jsonInput['from'], jsonInput['type'], jsonInput['zone'] = jsonData['from'], jsonData['type'], jsonData['zone']
+
+        # Show wit result
+        if configuration['debug']['debug_wit']:
+            log.msg("WIT: " + str(jsonInput['outcome']))
+
+        # Execute intent
+        client = cls.getClient(client_uid)
+        intent = PluginManager.getIntent(intent_name = jsonInput['outcome']['intent'])
+        if intent is not None:
+            # Call plugin
+            client['context'].parse(jsonInput = jsonInput, plugin_name = intent.plugin_name, method_name = intent.method_name)
+        else:
+            # Parse without intent
+            client['context'].parse(jsonInput = jsonInput)
+
+    #-----------------------------------------------------------------------------
+    @classmethod
+    def getClient(cls, client_uid):
+        # Get singleton
+        if cls.__instance is None:
+            return None
+
+        # Return client
+        return cls.__instance.clients[client_uid]
+
+    #-----------------------------------------------------------------------------
+    @classmethod
+    def getOrCreateZone(cls, zone_name):
+        # Create singleton
+        if cls.__instance is None:
+            cls.__instance = ClientFactory()
+
+        # All zones
+        if zone_name == "all":
+            return "all"
+
         # Lock access
-        self.__lock.acquire()
+        cls.__instance._lock.acquire()
 
         # Search zone
         zone = None
         zone_uid = None
-        for z in self.zones:
-            if self.zones[z]['name'] == zone_name:
-                zone = self.zones[z]
+        for z in cls.__instance.zones:
+            if cls.__instance.zones[z]['name'] == zone_name:
+                zone = cls.__instance.zones[z]
                 zone_uid = z
                 break
 
@@ -248,106 +314,58 @@ class ClientFactory(Factory):
         if zone is None:
             # Create zone
             zone_uid = str(uuid.uuid1())
-            self.zones[zone_uid] = {'name': zone_name, 'client_uids': []}
-            zone = self.zones[zone_uid]
+            cls.__instance.zones[zone_uid] = {'name': zone_name, 'client_uids': []}
+            zone = cls.__instance.zones[zone_uid]
 
         # Release access
-        self.__lock.release()
+        cls.__instance._lock.release()
 
         return zone_uid
 
     #-----------------------------------------------------------------------------
-    def sendToClients(self, jsonData, client_uids = [], zone_uids = []):
+    @classmethod
+    def sendToClients(cls, jsonData, client_uids = [], zone_uids = []):
+        # Create singleton
+        if cls.__instance is None:
+            cls.__instance = ClientFactory()
+
         # Parse clients
-        for c in self.clients:
+        for c in cls.__instance.clients:
             # If client is in destination
-            if 'all' in zone_uids or self.clients[c]['zone_uid'] in zone_uids or 'all' in client_uids or c in client_uids:
+            if "all" in zone_uids or cls.__instance.clients[c]['zone_uid'] in zone_uids or "all" in client_uids or c in client_uids:
                 # Parse client protocols
-                for p in self.clients[c]['protocols']:
+                for p in cls.__instance.clients[c]['protocols']:
                     # Send to client through protocol
-                    self.clients[c]['protocols'][p]['object'].sendToClient(jsonData)
+                    cls.__instance.clients[c]['protocols'][p]['object'].sendToClient(jsonData)
 
     #-----------------------------------------------------------------------------
-    def LisaReload(self):
-        global enabled_plugins
+    @classmethod
+    def LisaReload(cls):
+        # Create singleton
+        if cls.__instance is None:
+            cls.__instance = ClientFactory()
 
         log.msg("Reloading engine")
-        sys.path = self.syspath
-        enabled_plugins = []
-        self.build_activeplugins()
+        cls.__instance.build_activeplugins()
 
     #-----------------------------------------------------------------------------
-    def SchedReload(self):
+    @classmethod
+    def SchedReload(cls):
         global taskman
+        # Create singleton
+        if cls.__instance is None:
+            cls.__instance = ClientFactory()
+
         log.msg("Reloading task scheduler")
-        self.taskman = taskman
-        return self.taskman.reload()
-
-
-# TODO rename to ClientFactorySingleton
-#-----------------------------------------------------------------------------
-# LisaFactorySingleton
-#-----------------------------------------------------------------------------
-class LisaFactorySingleton(object):
-    """
-    Singleton version of the Lisa Factory.
-
-    Being a singleton, this class should not be initialised explicitly
-    and the ``get`` classmethod must be called instead.
-    """
-
-    __instance = None
+        cls.__instance.taskman = taskman
+        return cls.__instance.taskman.reload()
 
     #-----------------------------------------------------------------------------
-    def __init__(self):
-        """
-        Initialisation: this class should not be initialised
-        explicitly and the ``get`` classmethod must be called instead.
-        """
-        if self.__instance is not None:
-            raise Exception("Singleton can't be created twice !")
+    @classmethod
+    def get(cls):
+        # Create singleton
+        if cls.__instance is None:
+            cls.__instance = ClientFactory()
+        return cls.__instance
 
-    #-----------------------------------------------------------------------------
-    def get(self):
-        """
-        Actually create an instance
-        """
-        if self.__instance is None:
-            self.__instance = ClientFactory()
-            log.msg("ClientFactory initialised")
-        return self.__instance
-    get = classmethod(get)
-
-
-# Create an instance of factory, then create a protocol instance to import it everywhere
-LisaFactorySingleton.get()
-LisaProtocolSingleton.get()
-
-# Load the plugins
-PluginManagerSingleton.get().loadPlugins()
-
-def Initialize():
-    # Create the default core_intents_list intent
-    defaults_intent_list = {'name': "core_intents_list",
-                     'function': "list",
-                     'module': "lisa.server.core.intents.Intents",
-                     'enabled': True
-    }
-    intent_list, created = Intent.objects.get_or_create(name='core_intents_list', defaults=defaults_intent_list)
-
-    # Create the default rule of the rule engine
-    defaults_rule = {'name': "DefaultAnwser",
-                     'order': 999,
-                     'before': None,
-                     'after': """lisaprotocol.sendToClient(json.dumps(
-                                                {
-                                                    'plugin': jsonOutput['plugin'],
-                                                    'method': jsonOutput['method'],
-                                                    'body': jsonOutput['body'],
-                                                    'clients_zone': ['sender'],
-                                                    'from': jsonOutput['from']
-                                                }))""",
-                     'end': True,
-                     'enabled': True
-    }
-    default_rule, created = Rule.objects.get_or_create(name='DefaultAnwser', defaults=defaults_rule)
+# --------------------- End of server.py  ---------------------

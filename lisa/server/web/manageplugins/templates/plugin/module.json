@@ -2,16 +2,23 @@
     "name": "{{ plugin_name }}",
     "version": "0.1",
     "author": "{{ author_name }}",
-    "enabled": 1,
-    "pypi-url": "https://pypi.python.org/pypi/lisa-plugin-{{ plugin_name }}",
-    "github-url": "https://raw.githubusercontent.com/{{ author_name }}/LISA-PLUGINS-{{ plugin_name }}/master/lisa/plugins/{{ plugin_name }}/{{ plugin_name_lower }}.json",
-    "description": [
-        {"lang": "en", "description": "Auto-generated plugin"}
-    ],
-    "lang": ["en"],
-    "configuration": {
-        "intents": {
-
+    "git-url": "git@git.neotique.fr:demonstrateur/plugin-{{ plugin_name_lower }}",
+    "i_can": "i_can_plugin",
+    "lang": ["fr"],
+    "intents": {
+        "wit_intent1": {
+            "method": "sayHello",
+            "i_can": "i_can_say_hello"
+        }
+    },
+    "crons": {
+    },
+    "context": {
+        "global": {
+            "{{ plugin_name }}_var1": "default_value"
+        },
+        "client": {
+            "{{ plugin_name }}_var2": "default_value"
         }
     }
 }
