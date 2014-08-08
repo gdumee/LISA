@@ -19,6 +19,7 @@
         "debug_input": true,
         "debug_output": true,
         "debug_scheduler": false,
+        "debug_plugin": true,
         "debug_wit": true,
         "debug_before_before_rule": false,
         "debug_after_before_rule": false,
@@ -29,6 +30,5 @@
     "wit_token": "Z45ZDBO54WA2OBL3N4USAYGF5FMHVCCL",
     "wit_confidence": 0.600,
 
-    "bot_name": "neo",
-    "plugin_store": "http://plugins.lisa-project.net/"
+    "bot_name": "neo"
 }
