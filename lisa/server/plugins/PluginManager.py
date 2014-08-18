@@ -239,6 +239,7 @@ class PluginManager(object):
 
         # Create new plugin
         plugin = Plugin()
+        setattr(plugin, 'name', plugin_name)
 
         # Update plugin in DB
         cls._updatePlugin(plugin = plugin)
