@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 #-----------------------------------------------------------------------------
-# project     : Lisa plugins
+# project     : Demonstrator plugins
 # module      : {{ plugin_name }}
 # file        : {{ plugin_name_lower }}.py
 # description : TODO

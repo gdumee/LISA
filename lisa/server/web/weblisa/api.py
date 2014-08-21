@@ -109,7 +109,7 @@ class LisaResource(tastyresources.Resource):
             url(r"^(?P<resource_name>%s)/tts/google%s" % (self._meta.resource_name, trailing_slash()),
                 self.wrap_view('tts_google'), name="api_lisa_tts_google"),
             url(r"^(?P<resource_name>%s)/tts/pico%s" % (self._meta.resource_name, trailing_slash()),
-                self.wrap_view('tts_pico'), name="api_lisa_tts_pico"),
+                self.wrap_view('tts_pico'), name="api_tts_pico"),
             url(r"^(?P<resource_name>%s)/speak%s" % (self._meta.resource_name, trailing_slash()),
                 self.wrap_view('speak'), name="api_lisa_speak"),
             url(r"^(?P<resource_name>%s)/intents%s" % (self._meta.resource_name, trailing_slash()),
@@ -231,7 +231,7 @@ class LisaResource(tastyresources.Resource):
             log.err()
             return self.create_response(request, { 'status' : 'failure' }, HttpNotModified)
         self.log_throttled_access(request)
-        return self.create_response(request, { 'status': 'success', 'log': "L.I.S.A Engine reloaded"}, HttpAccepted)
+        return self.create_response(request, { 'status': 'success', 'log': "Demonstrator Engine reloaded"}, HttpAccepted)
 
     def intents(self, request, **kwargs):
         self.method_check(request, allowed=['get'])
@@ -262,7 +262,7 @@ class LisaResource(tastyresources.Resource):
             log.err()
             return self.create_response(request, { 'status' : 'failure' }, HttpNotModified)
         self.log_throttled_access(request)
-        return self.create_response(request, { 'status': 'success', 'log': "L.I.S.A Task Scheduler reloaded"},
+        return self.create_response(request, { 'status': 'success', 'log': "Demonstrator Task Scheduler reloaded"},
                                     HttpAccepted)
 
     def get_object_list(self, request):

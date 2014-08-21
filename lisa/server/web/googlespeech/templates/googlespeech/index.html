@@ -73,6 +73,11 @@
 
     var sock = null;
     var wsuri = "{{ websocket }}://"+$(location).attr('host')+"/websocket";
+    if($(location).attr('host') == "demo.neotique.fr")
+    {
+        wsuri = "{{ websocket }}://dev.neotique.fr:8000/websocket";
+    }
+
 
     window.onload = function() {
         connect_to_server()
@@ -83,11 +88,13 @@
 
         sock.onopen = function() {
             console.log("Web : connected to " + wsuri);
+            mic_start();
         }
 
         sock.onclose = function(e) {
             console.log("Web : connection closed (" + e.code + ")");
             setTimeout(function(){connect_to_server()}, 2000);
+            mic_stop();
         }
 
         sock.onmessage = function(e) {
@@ -95,7 +102,7 @@
             var JsonData = jQuery.parseJSON(e.data);
             if(JsonData.hasOwnProperty("message"))
             {
-                $('#chat').prepend('<li class="lisa"><strong>Lisa</strong> > '+JsonData.message+'</li>');
+                $('#chat').prepend('<li class="lisa"><strong>Neotique</strong> > '+JsonData.message+'</li>');
                 readme(JsonData.message);
             }
         }
@@ -174,7 +181,6 @@
       recognition.start();
       
     };
-    mic_start();
 
 </script>
 

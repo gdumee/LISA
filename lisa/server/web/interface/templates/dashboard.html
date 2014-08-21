@@ -1,6 +1,6 @@
 {% extends "base/base.html" %}
 
-{% block title %}L.I.S.A - Dashboard{% endblock %}
+{% block title %}Démonstrateur Neotique - Dashboard{% endblock %}
 
 {% block css %}
  <link rel="stylesheet" type="text/css" href="/static/css/jquery.gridster.min.css">
@@ -9,6 +9,7 @@
 {% block javascript %}
     <script src="/static/js/jquery.gridster.min.js" type="text/javascript" charset="utf-8"></script>
     <script type="text/javascript">
+	window.location.href = "speech"
         $(function(){ //DOM Ready
 
         $(".gridster ul").gridster({
