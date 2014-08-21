@@ -129,7 +129,7 @@
                                window.webkitSpeechRecognition ||
                                null;
 
-    var ignore_onend;
+    var mic_enabled = false;
     var recognition = null;
     if (window.SpeechRecognition === null)
     {
@@ -138,6 +138,7 @@
     else
     {
       recognition = new SpeechRecognition();
+      start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic.gif';
       recognition.onresult = function(event)
       {
         mic_stop();
@@ -170,18 +171,31 @@
     };
     function mic_start()
     {
-      if(recognition == null)
+      if(recognition == null || mic_enabled == false)
       {
         return;
       }
       start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic-animate.gif';
-      ignore_onend = false;
       recognition.lang = 'fr-FR';
       recognition.continuous = true;
       recognition.start();
       
     };
 
+    function startButton(event)
+    {
+      if (mic_enabled == true)
+      {
+        mic_enabled = false;
+        mic_stop();
+        recognition.stop();
+        return;
+      }
+
+      mic_enabled = true;
+      mic_start();
+    }
+ 
 </script>
 
 {% endblock %}
@@ -190,16 +204,18 @@
 <table>
     <tr>
         <td>
-            <form id="actionForm" onsubmit="send()">
-                <p>
+            <p>
+                <form id="actionForm" onsubmit="send()">
                     Message:
                     <input id="message" type="text" value="" lang="fr-FR"  x-webkit-speech  speech  onwebkitspeechchange="send();">
                     <Input type="submit" id="sendit" value="Send Message">
-                </p>
-                <div style="width: 50px; height: 50px; margin-left: auto; margin-right: auto; border-radius: 25px; background-color: white;">
-                    <img alt="Start" id="start_img" src="https://www.google.com/intl/en/chrome/assets/common/images/content/mic-slash.gif">
-                </div>
-            </form>
+                </form>
+            </p>
+            <div style="width: 50px; height: 50px; margin-left: auto; margin-right: auto;">
+                <button id="start_button" onclick="startButton(event)" style="display: inline-block; border-radius: 25px; width: 50px; height: 50px;">
+                    <img alt="Start" id="start_img" style="width: 34px; height: 34px;" src="https://www.google.com/intl/en/chrome/assets/common/images/content/mic-slash.gif";>
+                </button>
+            </div>
         </td>
         <td>
             <div class=span10>
