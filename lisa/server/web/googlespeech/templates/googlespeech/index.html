@@ -20,8 +20,10 @@
             source.onended = function() {
                 isFinished = true;
                 cancelAnimationFrame(globalID);
+                mic_start();
             }
             globalID = requestAnimationFrame(draw);
+            mic_stop();
             source.start(0);
         }
 
@@ -115,6 +117,65 @@
         $('#message').val(''); // Clear input field
     };
 
+    // Test browser support
+    window.SpeechRecognition = window.SpeechRecognition       ||
+                               window.webkitSpeechRecognition ||
+                               null;
+
+    var ignore_onend;
+    var recognition = null;
+    if (window.SpeechRecognition === null)
+    {
+      start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic-slash.gif';
+    }
+    else
+    {
+      recognition = new SpeechRecognition();
+      recognition.onresult = function(event)
+      {
+        mic_stop();
+        if (typeof(event.results) == 'undefined')
+        {
+          return;
+        }
+        if (event.results.length > 0)
+        {
+          message.value = event.results[0][0].transcript;
+          send();
+        }
+      };
+      recognition.onerror = function(event)
+      {
+        mic_stop();
+        start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic-slash.gif';
+      }
+    }
+
+    function mic_stop()
+    {
+      if(recognition == null)
+      {
+        return;
+      }
+      start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic.gif';
+      recognition.stop();
+
+    };
+    function mic_start()
+    {
+      if(recognition == null)
+      {
+        return;
+      }
+      start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic-animate.gif';
+      ignore_onend = false;
+      recognition.lang = 'fr-FR';
+      recognition.continuous = true;
+      recognition.start();
+      
+    };
+    mic_start();
+
 </script>
 
 {% endblock %}
@@ -127,8 +188,11 @@
                 <p>
                     Message:
                     <input id="message" type="text" value="" lang="fr-FR"  x-webkit-speech  speech  onwebkitspeechchange="send();">
+                    <Input type="submit" id="sendit" value="Send Message">
                 </p>
-                <Input type="submit" id="sendit" value="Send Message">
+                <div style="width: 50px; height: 50px; margin-left: auto; margin-right: auto; border-radius: 25px; background-color: white;">
+                    <img alt="Start" id="start_img" src="https://www.google.com/intl/en/chrome/assets/common/images/content/mic-slash.gif">
+                </div>
             </form>
         </td>
         <td>
